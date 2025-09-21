@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
+# Cache buster - Force new build: 2025-09-21-23:21
 # Install system dependencies for PDF processing and OCR
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
