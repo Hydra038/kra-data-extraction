@@ -37,10 +37,163 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 # Configure page layout
 st.set_page_config(
     page_title="KRA Tax Notice Processor",
-    page_icon="📄",
+    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Custom CSS inspired by KRA website (same as multi_format_extractor.py)
+st.markdown("""
+<style>
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Root variables inspired by KRA colors */
+    :root {
+        --kra-primary: #1e3a8a;
+        --kra-secondary: #3b82f6;
+        --kra-accent: #f59e0b;
+        --kra-success: #10b981;
+        --kra-danger: #ef4444;
+        --kra-light: #f8fafc;
+        --kra-dark: #1e293b;
+        --kra-border: #e2e8f0;
+    }
+    
+    /* Main app styling */
+    .main .block-container {
+        padding-top: 1rem;
+        padding-bottom: 2rem;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Header styling */
+    .kra-header {
+        background: linear-gradient(135deg, var(--kra-primary) 0%, var(--kra-secondary) 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.2);
+    }
+    
+    .kra-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .kra-header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg, .css-1544g2n {
+        background: linear-gradient(180deg, var(--kra-light) 0%, #ffffff 100%);
+        border-right: 2px solid var(--kra-border);
+    }
+    
+    /* Card styling */
+    .kra-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--kra-border);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Stats cards */
+    .stat-card {
+        background: linear-gradient(135deg, var(--kra-primary) 0%, var(--kra-secondary) 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
+        margin-bottom: 1rem;
+    }
+    
+    .stat-card h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+    
+    .stat-card p {
+        opacity: 0.9;
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(135deg, var(--kra-accent) 0%, #f59e0b 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        width: 100%;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+    }
+    
+    /* File uploader styling */
+    .stFileUploader {
+        border: 2px dashed var(--kra-accent);
+        border-radius: 12px;
+        padding: 2rem;
+        background: var(--kra-light);
+        text-align: center;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, var(--kra-success) 0%, var(--kra-accent) 100%);
+    }
+    
+    /* Table styling */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+    
+    /* Success/Error messages */
+    .stSuccess {
+        background: linear-gradient(135deg, var(--kra-success) 0%, #065f46 100%);
+        border-radius: 8px;
+    }
+    
+    .stError {
+        background: linear-gradient(135deg, var(--kra-danger) 0%, #dc2626 100%);
+        border-radius: 8px;
+    }
+    
+    /* Hide Streamlit style */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    header[data-testid="stHeader"] {display:none;}
+    
+    /* Info boxes */
+    .stInfo {
+        background: linear-gradient(135deg, var(--kra-secondary) 0%, #3b82f6 100%);
+        border-radius: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -597,15 +750,48 @@ def create_excel_download(df, output_mode="Create New Excel", existing_excel=Non
 def main():
     """Main Streamlit application interface."""
     
-    # App Header
+    # Beautiful header inspired by KRA website
     st.markdown("""
-    <div class="main-header">
-        <h1 style="margin: 0; font-size: 2.5rem;">📄 KRA Tax Notice Processor</h1>
-        <p style="margin: 0.5rem 0 0 0; font-size: 1.2rem; opacity: 0.9;">
-            Upload your file to extract structured data with AI-powered OCR
+    <div class="kra-header">
+        <h1>🏛️ KRA Tax Notice Processor</h1>
+        <p>Advanced AI-powered document processing for tax notices and financial documents</p>
+        <p style="font-size: 1rem; margin-top: 1rem;">
+            <strong>Kenya Revenue Authority</strong> • Single Document Processing
         </p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Database stats in beautiful cards
+    try:
+        db_stats = get_database_stats()
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="stat-card">
+                <h3>{db_stats['total_records']:,}</h3>
+                <p>📊 Total Records</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="stat-card">
+                <h3>{db_stats['unique_taxpayers']:,}</h3>
+                <p>👥 Unique Taxpayers</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="stat-card">
+                <h3>{db_stats['unique_officers']:,}</h3>
+                <p>👤 Tax Officers</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.info("📊 Database statistics will appear here after first extraction")
     
     # Debug information panel
     if DEBUG_MODE:
