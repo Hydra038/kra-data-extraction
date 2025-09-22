@@ -505,9 +505,12 @@ def extract_kra_fields(text):
                 # Pattern to find amount on the same line as "Total Tax"
                 # Matches formats like: "Total Tax 14,769.50", "Total Tax: 14,769.50", "Total Tax                14,769.50"
                 amount_patterns = [
-                    r'total\s+tax[:\s]*([0-9,]+\.?\d*)',  # Total Tax followed by amount
-                    r'total\s+tax.*?([0-9,]+\.?\d*)',     # Total Tax with anything in between, then amount
+                    r'total\s+tax[:\s]*([0-9,]+\.?\d*)',  # Total Tax followed by amount with commas
+                    r'total\s+tax.*?([0-9,]+\.?\d*)',     # Total Tax with anything in between, then amount with commas
+                    r'total\s+tax[:\s]*([0-9]+\.?\d*)',   # Total Tax followed by amount WITHOUT commas
+                    r'total\s+tax.*?([0-9]+\.?\d*)',      # Total Tax with anything in between, then amount WITHOUT commas
                     r'([0-9,]+\.?\d*)\s*total\s+tax',     # Amount before Total Tax (reversed order)
+                    r'([0-9]+\.?\d*)\s*total\s+tax',      # Amount WITHOUT commas before Total Tax
                 ]
                 
                 for pattern in amount_patterns:
