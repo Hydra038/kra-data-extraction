@@ -9,6 +9,7 @@ Author: Groot
 Date: September 20, 2025
 """
 
+
 import streamlit as st
 import pandas as pd
 import pytesseract
@@ -19,7 +20,6 @@ import io
 from pathlib import Path
 import tempfile
 import os
-
 # Import deduplication utilities
 from deduplication_utils import deduplicate_dataframe, compare_extraction_methods
 # Import database utilities
@@ -32,6 +32,10 @@ import sys
 import subprocess
 import zipfile
 from typing import List, Dict, Any
+
+# Set up logging (must be before any logger usage)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Word document processing
 try:
@@ -47,8 +51,19 @@ try:
 except ImportError:
     DOCX2TXT_AVAILABLE = False
 
-# Configure Tesseract OCR path
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Configure Tesseract OCR path. Use the hardcoded path only if tesseract is not in PATH.
+try:
+    # Check if Tesseract is accessible via PATH
+    pytesseract.get_tesseract_version()
+    logger.info("Tesseract found in system PATH.")
+except pytesseract.TesseractNotFoundError:
+    TESSERACT_PATH = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    if os.path.exists(TESSERACT_PATH):
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
+        logger.warning(f"Tesseract not in PATH. Using hardcoded path: {TESSERACT_PATH}")
+    else:
+        # If the specific path also fails, log an error. OCR functions will fail gracefully.
+        logger.error("Tesseract not found. Please ensure it is installed and in your PATH, or set the correct path in the code.")
 
 # Configure page layout
 st.set_page_config(
@@ -284,7 +299,7 @@ def log_error(message, error):
 
 def extract_text_from_word(file_path_or_bytes):
     """
-    Extract text from Word document (.docx)
+    Extract text from Word document (.docx) including tables
     
     Args:
         file_path_or_bytes: File path string or bytes object
@@ -293,16 +308,37 @@ def extract_text_from_word(file_path_or_bytes):
         tuple: (extracted_text, extraction_method)
     """
     try:
-        log_debug("Starting Word document text extraction")
+        log_debug("Starting Word document text extraction with table support")
         
         if isinstance(file_path_or_bytes, str):
             # File path
             if DOCX_AVAILABLE:
                 doc = Document(file_path_or_bytes)
-                text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                
+                # Extract paragraphs
+                text_parts = []
+                for paragraph in doc.paragraphs:
+                    if paragraph.text.strip():
+                        text_parts.append(paragraph.text)
+                
+                # Extract tables
+                for table in doc.tables:
+                    table_text = "\n--- TABLE START ---\n"
+                    for row in table.rows:
+                        row_text = []
+                        for cell in row.cells:
+                            cell_text = cell.text.strip()
+                            if cell_text:
+                                row_text.append(cell_text)
+                        if row_text:
+                            table_text += " | ".join(row_text) + "\n"
+                    table_text += "--- TABLE END ---\n"
+                    text_parts.append(table_text)
+                
+                text = "\n".join(text_parts)
                 if text.strip():
-                    log_debug(f"Word extraction successful via python-docx: {len(text)} characters")
-                    return text, "docx_paragraphs"
+                    log_debug(f"Word extraction successful via python-docx with tables: {len(text)} characters")
+                    return text, "docx_with_tables"
             
             if DOCX2TXT_AVAILABLE:
                 text = docx2txt.process(file_path_or_bytes)
@@ -318,10 +354,31 @@ def extract_text_from_word(file_path_or_bytes):
             try:
                 if DOCX_AVAILABLE:
                     doc = Document(tmp_path)
-                    text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+                    
+                    # Extract paragraphs
+                    text_parts = []
+                    for paragraph in doc.paragraphs:
+                        if paragraph.text.strip():
+                            text_parts.append(paragraph.text)
+                    
+                    # Extract tables
+                    for table in doc.tables:
+                        table_text = "\n--- TABLE START ---\n"
+                        for row in table.rows:
+                            row_text = []
+                            for cell in row.cells:
+                                cell_text = cell.text.strip()
+                                if cell_text:
+                                    row_text.append(cell_text)
+                            if row_text:
+                                table_text += " | ".join(row_text) + "\n"
+                        table_text += "--- TABLE END ---\n"
+                        text_parts.append(table_text)
+                    
+                    text = "\n".join(text_parts)
                     if text.strip():
-                        log_debug(f"Word extraction successful via python-docx: {len(text)} characters")
-                        return text, "docx_paragraphs"
+                        log_debug(f"Word extraction successful via python-docx with tables: {len(text)} characters")
+                        return text, "docx_with_tables"
                 
                 if DOCX2TXT_AVAILABLE:
                     text = docx2txt.process(tmp_path)
@@ -340,7 +397,7 @@ def extract_text_from_word(file_path_or_bytes):
 
 def extract_text_from_pdf(pdf_file):
     """
-    Extract text from PDF - detect if digital or scanned
+    Extract text from PDF - detect if digital or scanned, with enhanced table extraction
     
     Args:
         pdf_file: File path, bytes, or Streamlit UploadedFile object
@@ -349,7 +406,7 @@ def extract_text_from_pdf(pdf_file):
         tuple: (extracted_text, extraction_method)
     """
     try:
-        log_debug("Starting PDF text extraction")
+        log_debug("Starting PDF text extraction with table support")
         
         # Handle different input types
         if hasattr(pdf_file, 'read'):
@@ -363,32 +420,67 @@ def extract_text_from_pdf(pdf_file):
             with open(pdf_file, 'rb') as f:
                 pdf_bytes = f.read()
         
-        # Try digital text extraction first
+        # Try digital text extraction first with table detection
         try:
             pdf_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            text = ""
-            for page in pdf_doc:
-                text += page.get_text() + "\n"
+            text_parts = []
+            
+            for page_num, page in enumerate(pdf_doc):
+                page_text = page.get_text()
+                
+                # Try to extract tables using PyMuPDF's table detection
+                try:
+                    tables = page.find_tables()
+                    if tables:
+                        table_text = f"\n--- PAGE {page_num + 1} TABLES ---\n"
+                        for table_num, table in enumerate(tables):
+                            table_text += f"TABLE {table_num + 1}:\n"
+                            table_data = table.extract()
+                            for row in table_data:
+                                if row and any(cell and str(cell).strip() for cell in row):
+                                    row_text = " | ".join(str(cell).strip() if cell else "" for cell in row)
+                                    table_text += row_text + "\n"
+                            table_text += "\n"
+                        text_parts.append(table_text)
+                    
+                    # Add regular text
+                    if page_text.strip():
+                        text_parts.append(page_text)
+                        
+                except Exception as table_error:
+                    log_debug(f"Table extraction failed for page {page_num + 1}: {table_error}")
+                    # Fall back to regular text extraction
+                    if page_text.strip():
+                        text_parts.append(page_text)
+            
             pdf_doc.close()
             
+            text = "\n".join(text_parts)
             if len(text.strip()) > 100:  # Meaningful text threshold
-                log_debug(f"Digital PDF extraction successful: {len(text)} characters")
-                return text, "digital_pdf"
+                log_debug(f"Digital PDF extraction with tables successful: {len(text)} characters")
+                return text, "digital_pdf_with_tables"
         except Exception as e:
             log_debug(f"Digital PDF extraction failed: {e}")
         
-        # Fall back to OCR
+        # Fall back to OCR with enhanced table detection
         try:
             images = convert_from_bytes(pdf_bytes, dpi=300)
-            text = ""
+            text_parts = []
+            
             for i, image in enumerate(images):
-                page_text = pytesseract.image_to_string(image)
-                text += page_text + "\n"
+                # Use OCR with table structure preservation
+                custom_config = r'--oem 3 --psm 6 -c preserve_interword_spaces=1'
+                page_text = pytesseract.image_to_string(image, config=custom_config)
+                
+                if page_text.strip():
+                    text_parts.append(f"--- PAGE {i+1} (OCR) ---\n{page_text}")
+                
                 log_debug(f"OCR page {i+1}: {len(page_text)} characters")
             
+            text = "\n".join(text_parts)
             if text.strip():
-                log_debug(f"PDF OCR extraction successful: {len(text)} characters")
-                return text, "pdf_ocr"
+                log_debug(f"PDF OCR extraction with table support successful: {len(text)} characters")
+                return text, "pdf_ocr_with_tables"
         except Exception as e:
             log_error("PDF OCR extraction failed", e)
         
@@ -412,6 +504,7 @@ def extract_kra_fields(text):
         'date': '',
         'pin': '',
         'taxpayerName': '',
+        'notice': '',
         'preAmount': '',
         'finalAmount': '',
         'year': '',
@@ -422,19 +515,26 @@ def extract_kra_fields(text):
     try:
         log_debug("Starting KRA field extraction")
         
-        # Extract Date (existing patterns work well)
-        date_patterns = [
-            r'(\d{1,2}(?:ST|ND|RD|TH)\s+[A-Z]+,?\s+\d{4})',
-            r'(\d{1,2}[A-Z]{2}\s+[A-Z]{3,9},?\s*\d{4})',
-            r'(\d{1,2}\s+[A-Z]{3,9}\s+\d{4})',
-            r'(\d{1,2}[-/]\d{1,2}[-/]\d{4})',
-        ]
-        
-        for pattern in date_patterns:
-            date_match = re.search(pattern, text, re.IGNORECASE)
-            if date_match:
-                data['date'] = date_match.group(1).strip()
-                break
+        # Extract Date (after PIN, before taxpayer name/address)
+        date_match = re.search(r'PIN[:\s]*[A-Z]\d{9}[A-Z][^\n\r]*[\n\r]+\s*([0-9]{1,2}(?:ST|ND|RD|TH)?\s+[A-Z]+,?\s+\d{4})', text, re.IGNORECASE)
+        if not date_match:
+            # Fallback: look for date after PIN, before a name/address (comma or P.O. BOX)
+            date_match = re.search(r'PIN[:\s]*[A-Z]\d{9}[A-Z][^\n\r]*[\n\r]+\s*([0-9]{1,2}(?:ST|ND|RD|TH)?\s+[A-Z]+,?\s+\d{4})[\n\r]+[A-Z][A-Z\s,&.\-]+[,\n]', text, re.IGNORECASE)
+        if date_match:
+            data['date'] = date_match.group(1).strip()
+        else:
+            # Fallback to previous patterns
+            date_patterns = [
+                r'(\d{1,2}(?:ST|ND|RD|TH)\s+[A-Z]+,?\s+\d{4})',
+                r'(\d{1,2}[A-Z]{2}\s+[A-Z]{3,9},?\s*\d{4})',
+                r'(\d{1,2}\s+[A-Z]{3,9}\s+\d{4})',
+                r'(\d{1,2}[-/]\d{1,2}[-/]\d{4})',
+            ]
+            for pattern in date_patterns:
+                date_match = re.search(pattern, text, re.IGNORECASE)
+                if date_match:
+                    data['date'] = date_match.group(1).strip()
+                    break
         
         # Extract PIN (existing patterns work well)
         pin_patterns = [
@@ -451,85 +551,129 @@ def extract_kra_fields(text):
                     data['pin'] = pin
                     break
         
-        # IMPROVED: Extract Taxpayer Name (handles both companies and individuals)
-        improved_taxpayer_patterns = [
-            # Pattern 1: Individual name after PIN with comma (like "Peter Kimutai Telengech,")
-            r'PIN[:\s]*[A-Z]\d{9}[A-Z][^\n]*\n\s*([A-Za-z][A-Za-z\s]+?),',
-            # Pattern 2: Company name with business suffixes
-            r'([A-Z][A-Z\s&.,()-]+?(?:LIMITED|LTD|COMPANY|GROUP|CORPORATION|CORP|INC|ENTERPRISES|SERVICES))\s*(?:\n|$|P\.O\.)',
-            # Pattern 3: General pattern between PIN and P.O BOX
-            r'PIN[:\s]*[A-Z]\d{9}[A-Z]\s*\n\s*([A-Z][A-Z\s&.,()-]{5,}?)\s*\n\s*P\.\s*O\.',
-            # Pattern 4: Before P.O. BOX (more general)
-            r'([A-Z][A-Z\s&.,()LTD-]{10,}?)\s*\n\s*P\.\s*O\.\s*BOX',
+        # IMPROVED: Extract Taxpayer Name (context-aware: after date, before address)
+        # Look for name after date, before P.O. BOX or comma
+        name_match = re.search(r'(?:\d{1,2}(?:ST|ND|RD|TH)?\s+[A-Z]+,?\s+\d{4})\s*\n\s*([A-Z][A-Z\s&.,\-]+?),', text, re.IGNORECASE)
+        if not name_match:
+            # Fallback: name after date, before P.O. BOX
+            name_match = re.search(r'(?:\d{1,2}(?:ST|ND|RD|TH)?\s+[A-Z]+,?\s+\d{4})\s*\n\s*([A-Z][A-Z\s&.,\-]{5,}?)\s*\n\s*P\.\s*O\.', text, re.IGNORECASE)
+        if not name_match:
+            # Fallback: name after PIN, before address
+            name_match = re.search(r'PIN[:\s]*[A-Z]\d{9}[A-Z][^\n\r]*[\n\r]+.*?([A-Z][A-Z\s&.,\-]{5,}?),', text, re.IGNORECASE | re.DOTALL)
+        if name_match:
+            name = name_match.group(1).strip()
+            name = re.sub(r'\s+', ' ', name)
+            name = name.replace('\n', ' ').replace('\r', ' ')
+            name = re.sub(r'\s+', ' ', name)
+            # Enhanced validation for both individual and business names
+            words = name.split()
+            valid_keywords = ['LIMITED', 'LTD', 'COMPANY', 'GROUP', 'CORPORATION', 'CORP', 'INC', 'ENTERPRISES', 'SERVICES']
+            is_valid = (
+                len(name) >= 5 and len(name) <= 100 and
+                (
+                    any(keyword in name.upper() for keyword in valid_keywords) or
+                    (len(words) >= 2 and len(words) <= 4 and all(word.isalpha() for word in words))
+                ) and
+                sum(c.isalpha() or c.isspace() for c in name) / len(name) > 0.7
+            )
+            if is_valid:
+                data['taxpayerName'] = name
+        # Extract Station strictly as the line after the P.O. BOX address (no fallbacks)
+        # Extract station ONLY as the line after the P.O. BOX address. No fallbacks.
+        station_match = re.search(r'P\.\s*O\.\s*BOX[^\n\r]*[\n\r]+\s*([A-Z][A-Z\s.&,-]+)[\.,]', text)
+        if station_match:
+            station = station_match.group(1).strip()
+            station = re.sub(r'\s+', ' ', station)
+            station = station.rstrip('.').rstrip(',')
+            data['station'] = station
+        
+        # NEW: Extract Notice (RE: content from letters)
+        notice_patterns = [
+            r'RE:\s*(.+?)(?:\n\n|\r\n\r\n|Dear|KRA|$)',  # RE: followed by content until double newline or certain words
+            r'RE:\s*(.+?)(?:\n[A-Z]|\r\n[A-Z]|$)',      # RE: followed by content until next line starting with capital
+            r'RE:\s*(.+?)(?=\n\s*\n|\r\n\s*\r\n|$)',    # RE: followed by content until empty line
+            r'RE:\s*(.+?)\.?\s*(?:\n|$)',               # RE: followed by content until end of line
         ]
         
-        for pattern in improved_taxpayer_patterns:
-            name_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-            if name_match:
-                name = name_match.group(1).strip()
-                name = re.sub(r'\s+', ' ', name)
-                name = name.replace('\n', ' ').replace('\r', ' ')
-                name = re.sub(r'\s+', ' ', name)
+        for pattern in notice_patterns:
+            notice_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if notice_match:
+                notice = notice_match.group(1).strip()
+                # Clean up the notice text
+                notice = re.sub(r'\s+', ' ', notice)  # Replace multiple spaces/newlines with single space
+                notice = notice.replace('\n', ' ').replace('\r', ' ')  # Remove line breaks
+                notice = re.sub(r'\s+', ' ', notice).strip()  # Final cleanup
                 
-                # Enhanced validation for both individual and business names
-                words = name.split()
-                valid_keywords = ['LIMITED', 'LTD', 'COMPANY', 'GROUP', 'CORPORATION', 'CORP', 'INC', 'ENTERPRISES', 'SERVICES']
-                
-                is_valid = (
-                    len(name) >= 5 and len(name) <= 100 and
-                    (
-                        # Has business keywords OR
-                        any(keyword in name.upper() for keyword in valid_keywords) or
-                        # Is likely an individual name (2-4 words, mostly letters)
-                        (len(words) >= 2 and len(words) <= 4 and 
-                         all(word.isalpha() for word in words))
-                    ) and
-                    # Contains mostly letters
-                    sum(c.isalpha() or c.isspace() for c in name) / len(name) > 0.7
-                )
-                
-                if is_valid:
-                    data['taxpayerName'] = name
+                # Validate notice (should be meaningful text)
+                if len(notice) >= 10 and len(notice) <= 200:  # Reasonable length
+                    data['notice'] = notice
                     break
         
-        # NEW: Extract Pre-Amount (Total Tax) - PERFECTED: Find "Total Tax" and extract amount from same line
-        # Step 1: Look for lines containing "Total Tax" specifically
-        total_tax_lines = []
-        for line in text.split('\n'):
-            if re.search(r'total\s+tax', line, re.IGNORECASE):
-                total_tax_lines.append(line.strip())
+        # NEW: Extract Pre-Amount (Total Tax) - ENHANCED with table extraction
+        # Step 1: Look for table structure markers and extract amounts from them
+        table_amount_patterns = [
+            # Table row patterns with separators
+            r'total[\s\|]*tax[\s\|]*([0-9,]+\.?\d*)',
+            r'tax[\s\|]*amount[\s\|]*([0-9,]+\.?\d*)',
+            r'amount[\s\|]*due[\s\|]*([0-9,]+\.?\d*)',
+            # Patterns within TABLE START/END markers
+            r'---\s*table\s+start\s*---.*?total.*?([0-9,]+\.?\d*).*?---\s*table\s+end\s*---',
+            # Pipe-separated table patterns
+            r'\|[^|]*total[^|]*\|[^|]*([0-9,]+\.?\d*)[^|]*\|',
+            r'\|[^|]*tax[^|]*\|[^|]*([0-9,]+\.?\d*)[^|]*\|',
+        ]
         
-        # Step 2: Extract amount from Total Tax lines only
-        if total_tax_lines:
-            for line in total_tax_lines:
-                # Pattern to find amount on the same line as "Total Tax"
-                # Matches formats like: "Total Tax 14,769.50", "Total Tax: 14,769.50", "Total Tax                14,769.50"
-                amount_patterns = [
-                    r'total\s+tax[:\s]*([0-9,]+\.?\d*)',  # Total Tax followed by amount with commas
-                    r'total\s+tax.*?([0-9,]+\.?\d*)',     # Total Tax with anything in between, then amount with commas
-                    r'total\s+tax[:\s]*([0-9]+\.?\d*)',   # Total Tax followed by amount WITHOUT commas
-                    r'total\s+tax.*?([0-9]+\.?\d*)',      # Total Tax with anything in between, then amount WITHOUT commas
-                    r'([0-9,]+\.?\d*)\s*total\s+tax',     # Amount before Total Tax (reversed order)
-                    r'([0-9]+\.?\d*)\s*total\s+tax',      # Amount WITHOUT commas before Total Tax
-                ]
-                
-                for pattern in amount_patterns:
-                    match = re.search(pattern, line, re.IGNORECASE)
-                    if match:
-                        amount = match.group(1).strip()
-                        # Validate the amount
-                        clean_amount = amount.replace(',', '')
-                        try:
-                            amount_value = float(clean_amount)
-                            if amount_value >= 10:  # Minimum threshold
-                                data['preAmount'] = amount  # Keep original formatting with commas
-                                break
-                        except ValueError:
-                            continue
-                
-                # If we found amount on this Total Tax line, stop searching
-                if data['preAmount']:
-                    break
+        for pattern in table_amount_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                amount = match.group(1).strip()
+                clean_amount = amount.replace(',', '')
+                try:
+                    amount_value = float(clean_amount)
+                    if amount_value >= 10:  # Minimum threshold
+                        data['preAmount'] = amount
+                        break
+                except ValueError:
+                    continue
+        
+        # Step 2: Look for lines containing "Total Tax" specifically (existing logic)
+        if not data['preAmount']:
+            total_tax_lines = []
+            for line in text.split('\n'):
+                if re.search(r'total\s+tax', line, re.IGNORECASE):
+                    total_tax_lines.append(line.strip())
+            
+            # Step 3: Extract amount from Total Tax lines only
+            if total_tax_lines:
+                for line in total_tax_lines:
+                    # Pattern to find amount on the same line as "Total Tax"
+                    # Matches formats like: "Total Tax 14,769.50", "Total Tax: 14,769.50", "Total Tax                14,769.50"
+                    amount_patterns = [
+                        r'total\s+tax[:\s]*([0-9,]+\.?\d*)',  # Total Tax followed by amount with commas
+                        r'total\s+tax.*?([0-9,]+\.?\d*)',     # Total Tax with anything in between, then amount with commas
+                        r'total\s+tax[:\s]*([0-9]+\.?\d*)',   # Total Tax followed by amount WITHOUT commas
+                        r'total\s+tax.*?([0-9]+\.?\d*)',      # Total Tax with anything in between, then amount WITHOUT commas
+                        r'([0-9,]+\.?\d*)\s*total\s+tax',     # Amount before Total Tax (reversed order)
+                        r'([0-9]+\.?\d*)\s*total\s+tax',      # Amount WITHOUT commas before Total Tax
+                    ]
+                    
+                    for pattern in amount_patterns:
+                        match = re.search(pattern, line, re.IGNORECASE)
+                        if match:
+                            amount = match.group(1).strip()
+                            # Validate the amount
+                            clean_amount = amount.replace(',', '')
+                            try:
+                                amount_value = float(clean_amount)
+                                if amount_value >= 10:  # Minimum threshold
+                                    data['preAmount'] = amount  # Keep original formatting with commas
+                                    break
+                            except ValueError:
+                                continue
+                    
+                    # If we found amount on this Total Tax line, stop searching
+                    if data['preAmount']:
+                        break
         
         # Step 3: Fallback - if no "Total Tax" line found, try other tax amount patterns
         if not data['preAmount']:
@@ -544,12 +688,16 @@ def extract_kra_fields(text):
                 # Look for any substantial amount (as last resort for documents with tax data)
                 r'\b([0-9]{1,2}(?:,\d{3})+\.\d{2})\b',  # Pattern like 14,769.50
             ]
-            
             for pattern in fallback_patterns:
                 matches = re.finditer(pattern, text, re.IGNORECASE)
                 for match in matches:
                     amount = match.group(1).strip()
                     clean_amount = amount.replace(',', '')
+                    # Skip if the amount looks like a PIN (10-11 alphanumeric chars, e.g. A123456789X)
+                    if re.fullmatch(r'[A-Z]\d{9}[A-Z]', amount, re.IGNORECASE):
+                        continue
+                    if len(clean_amount) == 11 and clean_amount.isdigit():
+                        continue
                     try:
                         amount_value = float(clean_amount)
                         # More lenient threshold for fallback patterns
@@ -666,45 +814,55 @@ def process_document(file_path_or_uploaded, file_name):
         dict: Processing results with extracted data
     """
     # Initialize result with only the 8 core fields (camelCase)
-    result = {field: '' for field in ['date', 'pin', 'taxpayerName', 'preAmount', 'finalAmount', 'year', 'officerName', 'station']}
+    result = {field: '' for field in ['date', 'pin', 'taxpayerName', 'notice', 'preAmount', 'finalAmount', 'year', 'officerName', 'station']}
     
     try:
         log_debug(f"Processing document: {file_name}")
-        
         # Determine file type
         file_ext = Path(file_name).suffix.lower()
-        
         # Extract text based on file type
         if file_ext == '.pdf':
             text, method = extract_text_from_pdf(file_path_or_uploaded)
         elif file_ext in ['.docx', '.doc']:
             if hasattr(file_path_or_uploaded, 'read'):
-                # Uploaded file
                 text, method = extract_text_from_word(file_path_or_uploaded.read())
             else:
-                # File path
                 text, method = extract_text_from_word(file_path_or_uploaded)
         else:
             log_debug(f"Unsupported file type: {file_ext}")
             return result
-        
         if not text:
             log_debug("No text extracted from document")
             return result
-        
         # Extract KRA fields
         kra_data = extract_kra_fields(text)
         result.update(kra_data)
-        
         # Store extracted text for debugging (first file only)
         if not hasattr(st.session_state, 'last_extracted_text'):
             st.session_state.last_extracted_text = text
-        
+        # Store all extracted raw texts for Data Portal access
+        if 'raw_texts' not in st.session_state:
+            st.session_state.raw_texts = {}
+        st.session_state.raw_texts[file_name] = text
+        # --- DEBUG OUTPUT: Show extracted text and preAmount lines ---
+        if 'debug_outputs' not in st.session_state:
+            st.session_state.debug_outputs = []
+        debug_info = {
+            'file': file_name,
+            'type': method if 'method' in locals() else 'unknown',
+            'text_preview': text[:500],
+            'preAmount': result.get('preAmount', ''),
+            'preAmount_lines': []
+        }
+        # Find lines with 'total tax' or numbers that could be matched
+        lines = text.split('\n')
+        for line in lines:
+            if 'total tax' in line.lower() or (result.get('preAmount') and result['preAmount'] in line):
+                debug_info['preAmount_lines'].append(line.strip())
+        st.session_state.debug_outputs.append(debug_info)
         log_debug(f"Document processed successfully")
-        
     except Exception as e:
         log_error(f"Error processing document {file_name}", e)
-    
     return result
 
 def process_folder(folder_path):
@@ -787,15 +945,43 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Database statistics in KRA style
+    # --- Data Portal Button Logic ---
+    if 'show_data_portal' not in st.session_state:
+        st.session_state.show_data_portal = False
+
+    # Render Data Portal button (styled as before, but now functional)
+    data_portal_col = st.columns([8, 1])[1]
+    with data_portal_col:
+        if st.button("Data Portal", key="data_portal_btn", help="View extracted raw texts", use_container_width=True):
+            st.session_state.show_data_portal = True
+
+    # Add a Back to Dashboard button in Data Portal view
+    if st.session_state.show_data_portal:
+        st.subheader("📝 Extracted Raw Texts (Data Portal)")
+        if 'raw_texts' in st.session_state and st.session_state.raw_texts:
+            for fname, raw_text in st.session_state.raw_texts.items():
+                with st.expander(f"Raw Text: {fname}", expanded=False):
+                    st.text_area(f"Extracted Text for {fname}", raw_text, height=200, key=f"rawtext_{fname}")
+                    st.download_button(
+                        label=f"Download Raw Text ({fname})",
+                        data=raw_text,
+                        file_name=f"{fname}_extracted.txt",
+                        mime="text/plain",
+                        key=f"download_{fname}"
+                    )
+        else:
+            st.info("No extracted raw texts available yet. Process a document first.")
+        if st.button("⬅️ Back to Dashboard", key="back_to_dashboard_btn", use_container_width=True):
+            st.session_state.show_data_portal = False
+        return
+
+    # --- Dashboard (default view) ---
     try:
         db_stats = get_database_stats()
         st.markdown("""
         <div class="kra-stats-container">
         """, unsafe_allow_html=True)
-        
         col1, col2, col3 = st.columns(3)
-        
         with col1:
             st.markdown(f"""
             <div class="kra-stat-card">
@@ -803,7 +989,6 @@ def main():
                 <div class="kra-stat-label">Total Records</div>
             </div>
             """, unsafe_allow_html=True)
-        
         with col2:
             st.markdown(f"""
             <div class="kra-stat-card">
@@ -811,7 +996,6 @@ def main():
                 <div class="kra-stat-label">Unique Taxpayers</div>
             </div>
             """, unsafe_allow_html=True)
-        
         with col3:
             st.markdown(f"""
             <div class="kra-stat-card">
@@ -819,10 +1003,8 @@ def main():
                 <div class="kra-stat-label">Tax Officers</div>
             </div>
             """, unsafe_allow_html=True)
-            
         st.markdown("</div>", unsafe_allow_html=True)
-        
-    except:
+    except Exception:
         st.info("📊 Database statistics will appear here after first extraction")
     
     # Services section like iTax portal
@@ -965,6 +1147,22 @@ def main():
                 progress_bar.progress(1.0)
                 status_placeholder.success("Processing completed!")
                 
+                # Simple debug output for the first file
+                if results and hasattr(st.session_state, 'last_extracted_text'):
+                    st.subheader("🔍 Debug: Extracted Text Preview")
+                    st.write("**First 500 characters of extracted text:**")
+                    preview_text = st.session_state.last_extracted_text[:500] if st.session_state.last_extracted_text else "No text extracted"
+                    st.text_area("Raw Extracted Text", preview_text, height=150, key="debug_text_preview")
+                    
+                    # Check for Total Tax
+                    if st.session_state.last_extracted_text:
+                        if 'total tax' in st.session_state.last_extracted_text.lower():
+                            st.success("✅ 'Total Tax' found in document")
+                        else:
+                            st.error("❌ 'Total Tax' NOT found in document")
+                            if 'tax' in st.session_state.last_extracted_text.lower():
+                                st.warning("⚠️ Found 'tax' but not 'Total Tax'")
+                
                 # Store results and mark as processed
                 st.session_state.processing_results = results
                 st.session_state.processed_files = True
@@ -1081,6 +1279,11 @@ def display_results(results):
     # Apply deduplication to current batch
     deduplicated_current = deduplicate_dataframe(current_df)
     
+    # --- DEBUG: Show DataFrame info before saving ---
+    st.write("### [DEBUG] DataFrame to be saved:")
+    st.write(f"Rows: {len(deduplicated_current)} | Columns: {list(deduplicated_current.columns)}")
+    st.dataframe(deduplicated_current.head(5))
+    
     if len(deduplicated_current) < len(current_df):
         st.info(f"🔍 Removed {len(current_df) - len(deduplicated_current)} duplicate(s) from current batch")
     
@@ -1105,30 +1308,25 @@ def display_results(results):
     
     # DEBUG: Show extraction details for troubleshooting
     with st.expander("🔍 Debug: Extraction Details", expanded=False):
-        for i, result in enumerate(results[:3]):  # Show first 3 for debugging
+        debug_outputs = getattr(st.session_state, 'debug_outputs', [])
+        for i, debug in enumerate(debug_outputs[:3]):
             st.write(f"**File {i+1} Debug Info:**")
-            st.write(f"- PIN: `{result.get('pin', 'NOT FOUND')}`")
-            st.write(f"- Taxpayer Name: `{result.get('taxpayerName', 'NOT FOUND')}`")
-            st.write(f"- **preAmount: `{result.get('preAmount', 'NOT FOUND')}`**")
-            st.write(f"- Year: `{result.get('year', 'NOT FOUND')}`")
-            st.write(f"- Officer: `{result.get('officerName', 'NOT FOUND')}`")
-            
-            # NEW: Show raw extracted text to help debug Total Tax detection
-            if hasattr(st.session_state, 'last_extracted_text') and i == 0:
-                st.write("**Raw Extracted Text (first 500 chars):**")
-                text_preview = st.session_state.last_extracted_text[:500] if st.session_state.last_extracted_text else "No text found"
-                st.text(text_preview)
-                
-                # Check for Total Tax lines specifically
-                if st.session_state.last_extracted_text:
-                    lines = st.session_state.last_extracted_text.split('\n')
-                    total_tax_lines = [line.strip() for line in lines if 'total tax' in line.lower()]
-                    if total_tax_lines:
-                        st.write("**Total Tax lines found:**")
-                        for line in total_tax_lines:
-                            st.code(line)
-                    else:
-                        st.write("❌ **No 'Total Tax' lines found in document**")
+            st.write(f"- File: `{debug.get('file', 'N/A')}`")
+            st.write(f"- Type: `{debug.get('type', 'N/A')}`")
+            st.write(f"- PIN: `{results[i].get('pin', 'NOT FOUND')}`")
+            st.write(f"- Taxpayer Name: `{results[i].get('taxpayerName', 'NOT FOUND')}`")
+            st.write(f"- Notice (RE:): `{results[i].get('notice', 'NOT FOUND')}`")
+            st.write(f"- **preAmount: `{results[i].get('preAmount', 'NOT FOUND')}`**")
+            st.write(f"- Year: `{results[i].get('year', 'NOT FOUND')}`")
+            st.write(f"- Officer: `{results[i].get('officerName', 'NOT FOUND')}`")
+            st.write("**Raw Extracted Text (first 500 chars):**")
+            st.text(debug.get('text_preview', 'No text found'))
+            if debug.get('preAmount_lines'):
+                st.write("**preAmount-matched lines:**")
+                for line in debug['preAmount_lines']:
+                    st.code(line)
+            else:
+                st.write("❌ **No preAmount-matched lines found in document**")
             st.write("---")
     
     # Show the data in a nice table
@@ -1143,7 +1341,7 @@ def display_results(results):
     col1, col2, col3, col4 = st.columns(4)
     
     total_files = len(results)
-    successful = len([r for r in results if any(r.get(field, '') for field in ['date', 'pin', 'taxpayerName', 'preAmount', 'finalAmount', 'year', 'officerName', 'station'])])
+    successful = len([r for r in results if any(r.get(field, '') for field in ['date', 'pin', 'taxpayerName', 'notice', 'preAmount', 'finalAmount', 'year', 'officerName', 'station'])])
     success_rate = (successful / total_files * 100) if total_files > 0 else 0
     
     with col1:

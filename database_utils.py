@@ -66,7 +66,8 @@ def load_existing_database() -> pd.DataFrame:
     
     try:
         if os.path.exists(db_path):
-            df = pd.read_excel(db_path)
+            # Explicitly load the correct sheet
+            df = pd.read_excel(db_path, sheet_name='KRA_Database')
             logger.info(f"Loaded existing database with {len(df)} records")
             return df
         else:
@@ -75,6 +76,49 @@ def load_existing_database() -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Error loading database: {str(e)}")
         return pd.DataFrame()
+# --- Add missing utility functions for stats and export ---
+import openpyxl
+from typing import Optional
+from datetime import datetime
+
+def get_database_stats() -> tuple:
+    """
+    Returns basic statistics from the database.
+    Returns:
+        Tuple: (total_records, last_updated_date, unique_taxpayers, unique_stations)
+    """
+    try:
+        df = load_existing_database()
+        if df.empty:
+            return 0, None, 0, 0
+        total_records = len(df)
+        if 'date_extracted' in df.columns:
+            df['date_extracted'] = pd.to_datetime(df['date_extracted'], errors='coerce')
+            last_updated = df['date_extracted'].max()
+        else:
+            last_updated = None
+        unique_taxpayers = df['pin'].nunique() if 'pin' in df.columns else 0
+        unique_stations = df.get('station', pd.Series([])).nunique()
+        return total_records, last_updated, unique_taxpayers, unique_stations
+    except Exception as e:
+        logger.error(f"Error getting database stats: {str(e)}")
+        return 0, None, 0, 0
+
+def export_database_to_excel() -> Optional[bytes]:
+    """
+    Loads the entire database file content as bytes for Streamlit download.
+    """
+    try:
+        db_path = get_database_path()
+        if not os.path.exists(db_path):
+            logger.warning("Attempted to export but database file does not exist.")
+            return None
+        with open(db_path, "rb") as f:
+            excel_bytes = f.read()
+        return excel_bytes
+    except Exception as e:
+        logger.error(f"Error exporting database to Excel: {str(e)}")
+        return None
 
 def save_to_database(new_data_df: pd.DataFrame, source_app: str = "unknown") -> Tuple[int, int, int]:
     """
