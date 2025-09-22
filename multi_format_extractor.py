@@ -492,40 +492,61 @@ def extract_kra_fields(text):
                     data['taxpayerName'] = name
                     break
         
-        # NEW: Extract Pre-Amount (Total Tax) - Enhanced patterns
-        total_tax_patterns = [
-            # Pattern 1: "Total Tax" followed by amount (most specific)
-            r'Total\s+Tax[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 2: Table format with Total Tax row
-            r'Total\s+Tax[^\d]*?([0-9,]+\.?\d*)',
-            # Pattern 3: Various total mentions with amounts
-            r'(?:Total|Amount|Sum)[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 4: Final/Net/Payable amounts
-            r'(?:Final|Net|Payable)[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 5: Amounts in table format (like your example)
-            r'([0-9,]+\.?\d*)\s*$',  # Amount at end of line
-            # Pattern 6: Standalone amounts (last resort)
-            r'\b([0-9]{1,3}(?:,\d{3})*\.?\d{0,2})\b',
-        ]
+        # NEW: Extract Pre-Amount (Total Tax) - PERFECTED: Find "Total Tax" and extract amount from same line
+        # Step 1: Look for lines containing "Total Tax" specifically
+        total_tax_lines = []
+        for line in text.split('\n'):
+            if re.search(r'total\s+tax', line, re.IGNORECASE):
+                total_tax_lines.append(line.strip())
         
-        for pattern in total_tax_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE)
-            for amount_match in matches:
-                amount = amount_match.group(1).strip()
-                # Clean up the amount (remove commas, validate format)
-                clean_amount = amount.replace(',', '')
-                try:
-                    # Validate it's a proper number and not too small (avoid extracting dates, etc.)
-                    amount_value = float(clean_amount)
-                    if amount_value >= 10:  # Minimum threshold to avoid false positives
-                        data['preAmount'] = amount  # Keep original formatting with commas
-                        break
-                except ValueError:
-                    continue
+        # Step 2: Extract amount from Total Tax lines only
+        if total_tax_lines:
+            for line in total_tax_lines:
+                # Pattern to find amount on the same line as "Total Tax"
+                # Matches formats like: "Total Tax 14,769.50", "Total Tax: 14,769.50", "Total Tax                14,769.50"
+                amount_patterns = [
+                    r'total\s+tax[:\s]*([0-9,]+\.?\d*)',  # Total Tax followed by amount
+                    r'total\s+tax.*?([0-9,]+\.?\d*)',     # Total Tax with anything in between, then amount
+                    r'([0-9,]+\.?\d*)\s*total\s+tax',     # Amount before Total Tax (reversed order)
+                ]
+                
+                for pattern in amount_patterns:
+                    match = re.search(pattern, line, re.IGNORECASE)
+                    if match:
+                        amount = match.group(1).strip()
+                        # Validate the amount
+                        clean_amount = amount.replace(',', '')
+                        try:
+                            amount_value = float(clean_amount)
+                            if amount_value >= 10:  # Minimum threshold
+                                data['preAmount'] = amount  # Keep original formatting with commas
+                                break
+                        except ValueError:
+                            continue
+                
+                # If we found amount on this Total Tax line, stop searching
+                if data['preAmount']:
+                    break
+        
+        # Step 3: Fallback - if no "Total Tax" line found, try other tax amount patterns
+        if not data['preAmount']:
+            fallback_patterns = [
+                r'(?:principal\s+tax|tax\s+due|final\s+tax)[:\s]*([0-9,]+\.?\d*)',
+                r'(?:amount\s+due|net\s+tax|payable)[:\s]*([0-9,]+\.?\d*)',
+            ]
             
-            # If we found a valid amount, break out of pattern loop
-            if data['preAmount']:
-                break
+            for pattern in fallback_patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    amount = match.group(1).strip()
+                    clean_amount = amount.replace(',', '')
+                    try:
+                        amount_value = float(clean_amount)
+                        if amount_value >= 10:
+                            data['preAmount'] = amount
+                            break
+                    except ValueError:
+                        continue
         
         # FIXED: Extract Year with proper patterns and business logic
         year_found = False
