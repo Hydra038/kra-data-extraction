@@ -492,31 +492,40 @@ def extract_kra_fields(text):
                     data['taxpayerName'] = name
                     break
         
-        # NEW: Extract Pre-Amount (Total Tax)
+        # NEW: Extract Pre-Amount (Total Tax) - Enhanced patterns
         total_tax_patterns = [
-            # Pattern 1: "Total Tax" followed by amount
+            # Pattern 1: "Total Tax" followed by amount (most specific)
             r'Total\s+Tax[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 2: Any mention of total with tax amount
-            r'(?:Total|Amount)[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 3: Table format with Total Tax row
-            r'Total\s+Tax[^\d]*([0-9,]+\.?\d*)',
-            # Pattern 4: Final amount in tax calculations
+            # Pattern 2: Table format with Total Tax row
+            r'Total\s+Tax[^\d]*?([0-9,]+\.?\d*)',
+            # Pattern 3: Various total mentions with amounts
+            r'(?:Total|Amount|Sum)[:\s]*([0-9,]+\.?\d*)',
+            # Pattern 4: Final/Net/Payable amounts
             r'(?:Final|Net|Payable)[:\s]*([0-9,]+\.?\d*)',
+            # Pattern 5: Amounts in table format (like your example)
+            r'([0-9,]+\.?\d*)\s*$',  # Amount at end of line
+            # Pattern 6: Standalone amounts (last resort)
+            r'\b([0-9]{1,3}(?:,\d{3})*\.?\d{0,2})\b',
         ]
         
         for pattern in total_tax_patterns:
-            amount_match = re.search(pattern, text, re.IGNORECASE)
-            if amount_match:
+            matches = re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE)
+            for amount_match in matches:
                 amount = amount_match.group(1).strip()
                 # Clean up the amount (remove commas, validate format)
                 clean_amount = amount.replace(',', '')
                 try:
-                    # Validate it's a proper number
-                    float(clean_amount)
-                    data['preAmount'] = amount  # Keep original formatting with commas
-                    break
+                    # Validate it's a proper number and not too small (avoid extracting dates, etc.)
+                    amount_value = float(clean_amount)
+                    if amount_value >= 10:  # Minimum threshold to avoid false positives
+                        data['preAmount'] = amount  # Keep original formatting with commas
+                        break
                 except ValueError:
                     continue
+            
+            # If we found a valid amount, break out of pattern loop
+            if data['preAmount']:
+                break
         
         # FIXED: Extract Year with proper patterns and business logic
         year_found = False
@@ -982,17 +991,30 @@ def main():
         folder_path = st.text_input(
             "Enter folder path containing documents:",
             placeholder="C:\\path\\to\\your\\documents",
-            help="Enter the full path to the folder containing PDF and Word documents",
+            help="Enter the full path to the folder containing PDF and Word documents. Use forward slashes (/) or double backslashes (\\\\)",
             key="folder_path_input"
         )
         
+        # Normalize the path for Windows compatibility
+        if folder_path:
+            folder_path = folder_path.strip().replace('/', '\\')
+            if not folder_path.endswith('\\'):
+                folder_path = folder_path
+            st.info(f"📁 Looking for documents in: `{folder_path}`")
+        
         if folder_path and not st.session_state.folder_processed:
             if st.button("🚀 Process Folder", type="primary", key="process_folder_button"):
-                results = process_folder(folder_path)
-                if results:
-                    st.session_state.folder_results = results
-                    st.session_state.folder_processed = True
-                    st.session_state.folder_path_processed = folder_path
+                # Validate path before processing
+                if not os.path.exists(folder_path):
+                    st.error(f"❌ Folder does not exist: `{folder_path}`")
+                    st.info("💡 **Tips:**\n- Use full path like `C:\\Users\\Username\\Documents\\KRA_Files`\n- Use forward slashes: `C:/Users/Username/Documents/KRA_Files`\n- Or double backslashes: `C:\\\\Users\\\\Username\\\\Documents\\\\KRA_Files`")
+                else:
+                    with st.spinner(f"🔍 Processing documents in {folder_path}..."):
+                        results = process_folder(folder_path)
+                        if results:
+                            st.session_state.folder_results = results
+                            st.session_state.folder_processed = True
+                            st.session_state.folder_path_processed = folder_path
                     st.rerun()
         
         # Display folder results if processing is complete
