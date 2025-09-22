@@ -152,9 +152,9 @@ def save_to_database(new_data_df: pd.DataFrame, source_app: str = "unknown") -> 
                     len(new_data_df),
                     duplicates_removed,
                     deduplicated_df['Date'].min() if not deduplicated_df.empty and 'Date' in deduplicated_df.columns else 'N/A',
-                    deduplicated_df['Date'].max() if not deduplicated_df.empty and 'Date' in deduplicated_df.columns else 'N/A',
-                    deduplicated_df['Taxpayer_Name'].nunique() if not deduplicated_df.empty and 'Taxpayer_Name' in deduplicated_df.columns else 0,
-                    deduplicated_df['Station'].nunique() if not deduplicated_df.empty and 'Station' in deduplicated_df.columns else 0
+                    deduplicated_df['date'].max() if not deduplicated_df.empty and 'date' in deduplicated_df.columns else 'N/A',
+                    deduplicated_df['taxpayerName'].nunique() if not deduplicated_df.empty and 'taxpayerName' in deduplicated_df.columns else 0,
+                    deduplicated_df['station'].nunique() if not deduplicated_df.empty and 'station' in deduplicated_df.columns else 0
                 ]
             }
             summary_df = pd.DataFrame(summary_data)
@@ -203,9 +203,9 @@ def get_database_stats() -> dict:
         stats = {
             'total_records': len(df),
             'last_updated': df['date_extracted'].max() if 'date_extracted' in df.columns else 'Unknown',
-            'unique_taxpayers': df['Taxpayer_Name'].nunique() if 'Taxpayer_Name' in df.columns else 0,
-            'unique_stations': df['Station'].nunique() if 'Station' in df.columns else 0,
-            'date_range': f"{df['Date'].min()} to {df['Date'].max()}" if 'Date' in df.columns else 'Unknown'
+            'unique_taxpayers': df['taxpayerName'].nunique() if 'taxpayerName' in df.columns else 0,
+            'unique_stations': df['station'].nunique() if 'station' in df.columns else 0,
+            'date_range': f"{df['date'].min()} to {df['date'].max()}" if 'date' in df.columns else 'Unknown'
         }
         
         return stats
@@ -281,12 +281,14 @@ if __name__ == "__main__":
     
     # Test data
     test_data = pd.DataFrame({
-        'Date': ['2024-01-15', '2024-01-16'],
-        'PIN': ['A123456789X', 'B987654321Y'],
-        'Taxpayer_Name': ['John Doe', 'Jane Smith'],
-        'Year': ['2023', '2023'],
-        'Officer_Name': ['Officer A', 'Officer B'],
-        'Station': ['Station 1', 'Station 2']
+        'date': ['2024-01-15', '2024-01-16'],
+        'pin': ['A123456789X', 'B987654321Y'],
+        'taxpayerName': ['John Doe', 'Jane Smith'],
+        'preAmount': ['14,769.50', '25,432.75'],
+        'finalAmount': ['', ''],
+        'year': ['2023', '2023'],
+        'officerName': ['Officer A', 'Officer B'],
+        'station': ['Station 1', 'Station 2']
     })
     
     # Test save

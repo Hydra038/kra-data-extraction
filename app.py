@@ -458,12 +458,14 @@ def extract_data_from_page2(text):
         dict: Dictionary containing extracted fields
     """
     data = {
-        'Date': '',
-        'PIN': '',
-        'Taxpayer_Name': '',
-        'Year': '',
-        'Officer_Name': '',
-        'Station': ''
+        'date': '',
+        'pin': '',
+        'taxpayerName': '',
+        'preAmount': '',
+        'finalAmount': '',
+        'year': '',
+        'officerName': '',
+        'station': ''
     }
     extraction_log = []
     
@@ -539,6 +541,32 @@ def extract_data_from_page2(text):
                 if is_valid:
                     data['Taxpayer_Name'] = name
                     break
+        
+        # NEW: Extract Pre-Amount (Total Tax)
+        total_tax_patterns = [
+            # Pattern 1: "Total Tax" followed by amount
+            r'Total\s+Tax[:\s]*([0-9,]+\.?\d*)',
+            # Pattern 2: Any mention of total with tax amount
+            r'(?:Total|Amount)[:\s]*([0-9,]+\.?\d*)',
+            # Pattern 3: Table format with Total Tax row
+            r'Total\s+Tax[^\d]*([0-9,]+\.?\d*)',
+            # Pattern 4: Final amount in tax calculations
+            r'(?:Final|Net|Payable)[:\s]*([0-9,]+\.?\d*)',
+        ]
+        
+        for pattern in total_tax_patterns:
+            amount_match = re.search(pattern, text, re.IGNORECASE)
+            if amount_match:
+                amount = amount_match.group(1).strip()
+                # Clean up the amount (remove commas, validate format)
+                clean_amount = amount.replace(',', '')
+                try:
+                    # Validate it's a proper number
+                    float(clean_amount)
+                    data['Pre-Amount'] = amount  # Keep original formatting with commas
+                    break
+                except ValueError:
+                    continue
         
         # FIXED: Extract Year with proper patterns and business logic
         year_found = False
@@ -659,12 +687,14 @@ def create_dataframe(page1_data, page2_data):
         
         # Combine data from both pages, keeping only core fields
         combined_data = {
-            'Date': page1_data.get('Date', '') or page2_data.get('Date', ''),
-            'PIN': page1_data.get('PIN', '') or page2_data.get('PIN', ''),
-            'Taxpayer_Name': page1_data.get('Taxpayer_Name', '') or page2_data.get('Taxpayer_Name', ''),
-            'Year': page1_data.get('Year', '') or page2_data.get('Year', ''),
-            'Officer_Name': page1_data.get('Officer_Name', '') or page2_data.get('Officer_Name', ''),
-            'Station': page1_data.get('Station', '') or page2_data.get('Station', '')
+            'date': page1_data.get('date', '') or page2_data.get('date', ''),
+            'pin': page1_data.get('pin', '') or page2_data.get('pin', ''),
+            'taxpayerName': page1_data.get('taxpayerName', '') or page2_data.get('taxpayerName', ''),
+            'preAmount': page1_data.get('preAmount', '') or page2_data.get('preAmount', ''),
+            'finalAmount': page1_data.get('finalAmount', '') or page2_data.get('finalAmount', ''),
+            'year': page1_data.get('year', '') or page2_data.get('year', ''),
+            'officerName': page1_data.get('officerName', '') or page2_data.get('officerName', ''),
+            'station': page1_data.get('station', '') or page2_data.get('station', '')
         }
         
         # Log what data was combined

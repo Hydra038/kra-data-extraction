@@ -5,7 +5,7 @@ KRA Data Extraction System - Enhanced Multi-Format Processor
 Processes multiple documents (PDF, Word) from folders and extracts KRA data.
 Supports both individual file uploads and batch folder processing.
 
-Author: Groot
+Author: GitHub Copilot
 Date: September 20, 2025
 """
 
@@ -58,201 +58,155 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Authentic KRA iTax styling based on official portal
+# Custom CSS inspired by KRA website
 st.markdown("""
 <style>
-    /* Import fonts similar to KRA */
-    @import url('https://fonts.googleapis.com/css2?family=Arial:wght@400;500;600;700&display=swap');
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* KRA Official Colors from iTax portal */
+    /* Root variables inspired by KRA colors */
     :root {
-        --kra-red: #dc2626;
-        --kra-red-dark: #b91c1c;
-        --kra-blue: #1e40af;
-        --kra-blue-light: #3b82f6;
-        --kra-gray: #f3f4f6;
-        --kra-gray-dark: #6b7280;
-        --kra-white: #ffffff;
-        --kra-black: #1f2937;
+        --kra-primary: #1e3a8a;
+        --kra-secondary: #3b82f6;
+        --kra-accent: #f59e0b;
+        --kra-success: #10b981;
+        --kra-danger: #ef4444;
+        --kra-light: #f8fafc;
+        --kra-dark: #1e293b;
+        --kra-border: #e2e8f0;
     }
     
-    /* Reset default Streamlit styling */
+    /* Main app styling */
     .main .block-container {
-        padding-top: 0rem;
+        padding-top: 1rem;
         padding-bottom: 2rem;
-        font-family: Arial, sans-serif;
-        max-width: 100%;
+        font-family: 'Inter', sans-serif;
     }
     
-    /* KRA Header - Red bar like iTax */
-    .kra-header-bar {
-        background: var(--kra-red);
+    /* Header styling */
+    .kra-header {
+        background: linear-gradient(135deg, var(--kra-primary) 0%, var(--kra-secondary) 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
         color: white;
-        padding: 0.5rem 2rem;
-        margin: -1rem -1rem 0 -1rem;
-        font-size: 0.9rem;
         text-align: center;
-        font-weight: 500;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.2);
     }
     
-    /* Main KRA Header */
-    .kra-main-header {
-        background: var(--kra-white);
-        padding: 1.5rem 2rem;
-        border-bottom: 2px solid var(--kra-gray);
-        margin-bottom: 2rem;
-    }
-    
-    .kra-logo-section {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-    
-    .kra-title {
-        font-size: 1.8rem;
+    .kra-header h1 {
+        font-size: 2.5rem;
         font-weight: 700;
-        color: var(--kra-black);
-        margin: 0;
-    }
-    
-    .kra-subtitle {
-        color: var(--kra-gray-dark);
-        font-size: 1rem;
-        margin: 0.5rem 0 0 0;
-    }
-    
-    /* Service cards like iTax portal */
-    .kra-services-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    
-    .kra-service-card {
-        background: var(--kra-white);
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: box-shadow 0.3s ease;
-    }
-    
-    .kra-service-card:hover {
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .kra-service-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--kra-blue);
         margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    .kra-service-desc {
-        color: var(--kra-gray-dark);
-        font-size: 0.9rem;
-        line-height: 1.4;
+    .kra-header p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+    
+    /* Sidebar styling */
+    .css-1d391kg, .css-1544g2n {
+        background: linear-gradient(180deg, var(--kra-light) 0%, #ffffff 100%);
+        border-right: 2px solid var(--kra-border);
+    }
+    
+    /* Card styling */
+    .kra-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--kra-border);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        margin-bottom: 1.5rem;
     }
     
     /* Stats cards */
-    .kra-stats-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
-    
-    .kra-stat-card {
-        background: linear-gradient(135deg, var(--kra-blue) 0%, var(--kra-blue-light) 100%);
+    .stat-card {
+        background: linear-gradient(135deg, var(--kra-primary) 0%, var(--kra-secondary) 100%);
         color: white;
         padding: 1.5rem;
-        border-radius: 8px;
+        border-radius: 12px;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
+        box-shadow: 0 4px 15px rgba(30, 58, 138, 0.2);
+        margin-bottom: 1rem;
     }
     
-    .kra-stat-number {
+    .stat-card h3 {
         font-size: 2rem;
         font-weight: 700;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
+        color: white;
     }
     
-    .kra-stat-label {
-        font-size: 0.9rem;
+    .stat-card p {
         opacity: 0.9;
+        font-weight: 500;
+        margin-bottom: 0;
     }
     
-    /* Buttons - KRA Red style */
+    /* Button styling */
     .stButton > button {
-        background: var(--kra-red) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 4px !important;
-        padding: 0.75rem 1.5rem !important;
-        font-weight: 500 !important;
-        transition: background-color 0.3s ease !important;
+        background: linear-gradient(135deg, var(--kra-accent) 0%, #f59e0b 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        width: 100%;
     }
     
     .stButton > button:hover {
-        background: var(--kra-red-dark) !important;
-        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
     }
     
-    /* File uploader */
+    /* File uploader styling */
     .stFileUploader {
-        border: 2px dashed var(--kra-blue);
-        border-radius: 8px;
+        border: 2px dashed var(--kra-accent);
+        border-radius: 12px;
         padding: 2rem;
-        background: #f8fafc;
+        background: var(--kra-light);
         text-align: center;
     }
     
-    /* Progress bars */
+    /* Progress bar */
     .stProgress > div > div {
-        background: var(--kra-red);
+        background: linear-gradient(90deg, var(--kra-success) 0%, var(--kra-accent) 100%);
     }
     
-    /* Tables */
+    /* Table styling */
     .stDataFrame {
-        border: 1px solid #e5e7eb;
         border-radius: 8px;
         overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
     }
     
-    /* Sidebar */
-    .css-1d391kg, .css-1544g2n {
-        background: var(--kra-gray);
-        border-right: 1px solid #d1d5db;
-    }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stDeployButton {display: none;}
-    header[data-testid="stHeader"] {display: none;}
-    
-    /* Success/Error styling */
+    /* Success/Error messages */
     .stSuccess {
-        background: #10b981;
-        border-radius: 4px;
+        background: linear-gradient(135deg, var(--kra-success) 0%, #065f46 100%);
+        border-radius: 8px;
     }
     
     .stError {
-        background: var(--kra-red);
-        border-radius: 4px;
+        background: linear-gradient(135deg, var(--kra-danger) 0%, #dc2626 100%);
+        border-radius: 8px;
     }
     
-    .stWarning {
-        background: #f59e0b;
-        border-radius: 4px;
-    }
+    /* Hide Streamlit style */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display:none;}
+    header[data-testid="stHeader"] {display:none;}
     
+    /* Info boxes */
     .stInfo {
-        background: var(--kra-blue);
-        border-radius: 4px;
+        background: linear-gradient(135deg, var(--kra-secondary) 0%, #3b82f6 100%);
+        border-radius: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -409,14 +363,12 @@ def extract_kra_fields(text):
         dict: Dictionary containing extracted fields
     """
     data = {
-        'date': '',
-        'pin': '',
-        'taxpayerName': '',
-        'preAmount': '',
-        'finalAmount': '',
-        'year': '',
-        'officerName': '',
-        'station': ''
+        'Date': '',
+        'PIN': '',
+        'Taxpayer_Name': '',
+        'Year': '',
+        'Officer_Name': '',
+        'Station': ''
     }
     
     try:
@@ -433,7 +385,7 @@ def extract_kra_fields(text):
         for pattern in date_patterns:
             date_match = re.search(pattern, text, re.IGNORECASE)
             if date_match:
-                data['date'] = date_match.group(1).strip()
+                data['Date'] = date_match.group(1).strip()
                 break
         
         # Extract PIN (existing patterns work well)
@@ -448,7 +400,7 @@ def extract_kra_fields(text):
             if pin_match:
                 pin = pin_match.group(1).upper()
                 if re.match(r'^[A-Z]\d{9}[A-Z]$', pin):
-                    data['pin'] = pin
+                    data['PIN'] = pin
                     break
         
         # IMPROVED: Extract Taxpayer Name (handles both companies and individuals)
@@ -489,34 +441,8 @@ def extract_kra_fields(text):
                 )
                 
                 if is_valid:
-                    data['taxpayerName'] = name
+                    data['Taxpayer_Name'] = name
                     break
-        
-        # NEW: Extract Pre-Amount (Total Tax)
-        total_tax_patterns = [
-            # Pattern 1: "Total Tax" followed by amount
-            r'Total\s+Tax[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 2: Any mention of total with tax amount
-            r'(?:Total|Amount)[:\s]*([0-9,]+\.?\d*)',
-            # Pattern 3: Table format with Total Tax row
-            r'Total\s+Tax[^\d]*([0-9,]+\.?\d*)',
-            # Pattern 4: Final amount in tax calculations
-            r'(?:Final|Net|Payable)[:\s]*([0-9,]+\.?\d*)',
-        ]
-        
-        for pattern in total_tax_patterns:
-            amount_match = re.search(pattern, text, re.IGNORECASE)
-            if amount_match:
-                amount = amount_match.group(1).strip()
-                # Clean up the amount (remove commas, validate format)
-                clean_amount = amount.replace(',', '')
-                try:
-                    # Validate it's a proper number
-                    float(clean_amount)
-                    data['preAmount'] = amount  # Keep original formatting with commas
-                    break
-                except ValueError:
-                    continue
         
         # FIXED: Extract Year with proper patterns and business logic
         year_found = False
@@ -533,23 +459,23 @@ def extract_kra_fields(text):
             if year_match:
                 year = year_match.group(1).strip()
                 if year.isdigit() and 2015 <= int(year) <= 2030:
-                    data['year'] = year
+                    data['Year'] = year
                     year_found = True
                     break
                 elif '-' in year and len(year.split('-')[0]) == 4:  # Valid year range
-                    data['year'] = year
+                    data['Year'] = year
                     year_found = True
                     break
         
         # If no explicit year found, use business logic: document year - 1
-        if not year_found and data['date']:
+        if not year_found and data['Date']:
             # Extract year from document date
-            doc_year_match = re.search(r'\d{4}', data['date'])
+            doc_year_match = re.search(r'\d{4}', data['Date'])
             if doc_year_match:
                 doc_year = int(doc_year_match.group(0))
                 # Tax assessments are typically for the previous year
                 tax_year = doc_year - 1
-                data['year'] = str(tax_year)
+                data['Year'] = str(tax_year)
                 year_found = True
         
         # IMPROVED: Extract Officer Name (from contact information)
@@ -579,7 +505,7 @@ def extract_kra_fields(text):
                 if (len(words) >= 2 and len(words) <= 4 and 
                     all(word.isalpha() for word in words) and 
                     len(officer) >= 5 and len(officer) <= 50):
-                    data['officerName'] = officer
+                    data['Officer_Name'] = officer
                     break
         
         # Extract Station (existing patterns work well)
@@ -599,7 +525,7 @@ def extract_kra_fields(text):
             if station_match:
                 station = station_match.group(1).strip().upper()
                 if len(station) >= 3:
-                    data['station'] = station
+                    data['Station'] = station
                     break
         
         fields_found = sum(1 for v in data.values() if v)
@@ -622,8 +548,8 @@ def process_document(file_path_or_uploaded, file_name):
     Returns:
         dict: Processing results with extracted data
     """
-    # Initialize result with only the 8 core fields (camelCase)
-    result = {field: '' for field in ['date', 'pin', 'taxpayerName', 'preAmount', 'finalAmount', 'year', 'officerName', 'station']}
+    # Initialize result with only the 6 core fields
+    result = {field: '' for field in ['Date', 'PIN', 'Taxpayer_Name', 'Year', 'Officer_Name', 'Station']}
     
     try:
         log_debug(f"Processing document: {file_name}")
@@ -714,101 +640,52 @@ def process_folder(folder_path):
 def main():
     """Main application function"""
     
-    # KRA iTax style header
+    # Beautiful header inspired by KRA website
     st.markdown("""
-    <div class="kra-header-bar">
-        Welcome to KRA Data Extraction System | Online Help | Contact Us
+    <div class="kra-header">
+        <h1>🏛️ KRA Data Extraction System</h1>
+        <p>Professional data extraction from tax notices and financial documents</p>
+        <p style="font-size: 1rem; margin-top: 1rem;">
+            <strong>Kenya Revenue Authority</strong> • Advanced Document Processing
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Main header section like iTax
-    st.markdown("""
-    <div class="kra-main-header">
-        <div class="kra-logo-section">
-            <div>
-                <h1 class="kra-title">KENYA REVENUE AUTHORITY</h1>
-                <p class="kra-subtitle">Data Extraction & Document Processing Portal</p>
-            </div>
-            <div style="text-align: right;">
-                <div style="background: linear-gradient(45deg, #dc2626, #ef4444); 
-                           color: white; padding: 0.5rem 1rem; border-radius: 25px; 
-                           display: inline-block; font-weight: 600;">
-                    📊 Data Portal
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Database statistics in KRA style
+    # Database stats in beautiful cards
     try:
         db_stats = get_database_stats()
-        st.markdown("""
-        <div class="kra-stats-container">
-        """, unsafe_allow_html=True)
-        
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['total_records']:,}</div>
-                <div class="kra-stat-label">Total Records</div>
+            <div class="stat-card">
+                <h3>{db_stats['total_records']:,}</h3>
+                <p>📊 Total Records</p>
             </div>
             """, unsafe_allow_html=True)
         
         with col2:
             st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['unique_taxpayers']:,}</div>
-                <div class="kra-stat-label">Unique Taxpayers</div>
+            <div class="stat-card">
+                <h3>{db_stats['unique_taxpayers']:,}</h3>
+                <p>👥 Unique Taxpayers</p>
             </div>
             """, unsafe_allow_html=True)
         
         with col3:
             st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['unique_officers']:,}</div>
-                <div class="kra-stat-label">Tax Officers</div>
+            <div class="stat-card">
+                <h3>{db_stats['unique_officers']:,}</h3>
+                <p>👤 Tax Officers</p>
             </div>
             """, unsafe_allow_html=True)
             
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    except:
+    except Exception as e:
         st.info("📊 Database statistics will appear here after first extraction")
     
-    # Services section like iTax portal
-    st.markdown("""
-    <div class="kra-services-grid">
-        <div class="kra-service-card">
-            <div class="kra-service-title">📄 Document Processing</div>
-            <div class="kra-service-desc">
-                Upload PDF or Word documents for intelligent data extraction with AI-powered OCR technology.
-            </div>
-        </div>
-        <div class="kra-service-card">
-            <div class="kra-service-title">💾 Database Integration</div>
-            <div class="kra-service-desc">
-                Automatic database storage with smart duplicate detection and real-time processing statistics.
-            </div>
-        </div>
-        <div class="kra-service-card">
-            <div class="kra-service-title">📊 Data Analytics</div>
-            <div class="kra-service-desc">
-                Comprehensive reporting and analytics on extracted data with export capabilities to Excel.
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # KRA-style sidebar
-    st.sidebar.markdown("""
-    <div style="background: var(--kra-red); color: white; padding: 1rem; 
-                margin: -1rem -1rem 1rem -1rem; text-align: center;">
-        <h3 style="color: white; margin: 0;">⚙️ Processing Options</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    # Modern sidebar
+    st.sidebar.markdown("## 🔧 Processing Options")
+    st.sidebar.markdown("---")
     
     processing_mode = st.sidebar.radio(
         "**Select Processing Mode:**",
@@ -816,70 +693,80 @@ def main():
         help="Choose between uploading individual files or processing all documents in a folder"
     )
     
-    # System status section
+    # Dependencies section with modern styling
     st.sidebar.markdown("### 📋 System Status")
-    
-    status_docx = "🟢 Ready" if DOCX_AVAILABLE else "🔴 Missing"
-    status_docx2txt = "🟢 Ready" if DOCX2TXT_AVAILABLE else "🔴 Missing"
+    status_color_docx = "🟢" if DOCX_AVAILABLE else "🔴"
+    status_color_docx2txt = "🟢" if DOCX2TXT_AVAILABLE else "🔴"
     
     st.sidebar.markdown(f"""
-    - **Word Documents**: {status_docx}
-    - **PDF Processing**: 🟢 Ready
-    - **OCR Engine**: 🟢 Ready
-    - **Database**: 🟢 Ready
+    - {status_color_docx} **Microsoft Word**: {'Ready' if DOCX_AVAILABLE else 'Installing...'}
+    - {status_color_docx2txt} **Document Parser**: {'Ready' if DOCX2TXT_AVAILABLE else 'Installing...'}
+    - 🟢 **PDF Processing**: Ready
+    - 🟢 **OCR Engine**: Ready
     """)
     
-    # Install dependencies if needed
+    # Install dependencies with better UX
     if not (DOCX_AVAILABLE and DOCX2TXT_AVAILABLE):
-        if st.sidebar.button("� Install Word Support", help="Install Microsoft Word processing capabilities"):
-            with st.spinner("Installing Word document support..."):
+        if st.sidebar.button("� Install Word Dependencies", help="Install required packages for Word document processing"):
+            with st.spinner("Installing Microsoft Word processing capabilities..."):
                 try:
                     subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "docx2txt"])
-                    st.sidebar.success("✅ Installation complete! Please restart the app.")
+                    st.sidebar.success("✅ Dependencies installed! Please restart the app.")
                 except Exception as e:
                     st.sidebar.error(f"❌ Installation failed: {e}")
-                st.sidebar.info("Please restart the application to use Word processing features.")
     
-    # Check dependencies status
-    st.sidebar.markdown("### 📋 Dependencies Status")
-    st.sidebar.write(f"🔸 **python-docx**: {'✅ Available' if DOCX_AVAILABLE else '❌ Missing'}")
-    st.sidebar.write(f"🔸 **docx2txt**: {'✅ Available' if DOCX2TXT_AVAILABLE else '❌ Missing'}")
+    st.sidebar.markdown("---")
     
     if processing_mode == "📄 Individual Files":
-        st.header("📄 Individual File Processing")
+        # Individual file processing with beautiful cards
+        st.markdown("""
+        <div class="kra-card">
+            <h3>📄 Individual File Processing</h3>
+            <p>Upload PDF or Word documents for immediate data extraction and database storage</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Database Information
-        st.subheader("📊 Database Status")
-        
-        # Get database stats
-        db_stats = get_database_stats()
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Records", db_stats['total_records'])
-        with col2:
-            st.metric("Unique Taxpayers", db_stats['unique_taxpayers'])
-        with col3:
-            st.metric("Unique Stations", db_stats['unique_stations'])
-        with col4:
+        # Full database download section
+        try:
+            db_stats = get_database_stats()
             if db_stats['total_records'] > 0:
-                # Add full database download button
-                excel_data = export_database_to_excel()
-                if excel_data:
-                    st.download_button(
-                        label="📥 Download Full Database",
-                        data=excel_data,
-                        file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        type="primary",
-                        help="Download complete database with all historical records"
-                    )
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
+                                padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <p><strong>📅 Last Updated:</strong> {db_stats['last_updated']}</p>
+                        <p><strong>📊 Date Range:</strong> {db_stats['date_range']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    excel_data = export_database_to_excel()
+                    if excel_data:
+                        st.download_button(
+                            label="📥 Download Complete Database",
+                            data=excel_data,
+                            file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            type="primary",
+                            help="Download complete database with all historical records"
+                        )
+        except:
+            pass
         
-        if db_stats['total_records'] > 0:
-            st.info(f"📅 Last updated: {db_stats['last_updated']} | 📊 Date range: {db_stats['date_range']}")
-        
-        st.subheader("📄 Upload Documents")
-        st.info("💾 All extractions are automatically saved to the database with duplicate detection")
+        # Upload section with modern styling
+        st.markdown("### � Document Upload")
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); 
+                    padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 1rem;">
+            <p><strong>� Automatic Features:</strong></p>
+            <ul style="margin-bottom: 0;">
+                <li>✅ Database auto-save with duplicate detection</li>
+                <li>🎯 Smart data extraction and validation</li>
+                <li>📊 Real-time processing statistics</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Initialize session state for file management
         if 'processed_files' not in st.session_state:
@@ -1013,7 +900,13 @@ def display_results(results):
         st.warning("No results to display")
         return
     
-    st.header("📊 Extraction Results")
+    # Modern results header
+    st.markdown("""
+    <div class="kra-card">
+        <h3>📊 Extraction Results</h3>
+        <p>Processing complete with automatic database integration</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Create DataFrame from current results
     current_df = pd.DataFrame(results)
@@ -1022,56 +915,136 @@ def display_results(results):
     deduplicated_current = deduplicate_dataframe(current_df)
     
     if len(deduplicated_current) < len(current_df):
-        st.info(f"🔍 Removed {len(current_df) - len(deduplicated_current)} duplicate(s) from current batch")
+        st.success(f"🔍 Removed {len(current_df) - len(deduplicated_current)} duplicate(s) from current batch")
     
     # Save to database automatically
-    st.info("💾 Saving results to database...")
-    total_records, new_records, duplicates_removed = save_to_database(deduplicated_current, "multi_format_extractor")
+    with st.spinner("💾 Saving results to database..."):
+        total_records, new_records, duplicates_removed = save_to_database(deduplicated_current, "multi_format_extractor")
     
-    # Display save results
+    # Display save results in beautiful cards
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.success(f"✅ {new_records} new record(s) added")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #10b981 0%, #065f46 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{new_records}</h3>
+            <p style="margin: 0; opacity: 0.9;">✅ New Records Added</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
-        st.info(f"📊 Total database records: {total_records}")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{total_records:,}</h3>
+            <p style="margin: 0; opacity: 0.9;">📊 Total Database Records</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col3:
         if duplicates_removed > 0:
-            st.warning(f"🔍 {duplicates_removed} duplicate(s) found and merged")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+                        color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; color: white;">{duplicates_removed}</h3>
+                <p style="margin: 0; opacity: 0.9;">🔍 Duplicates Merged</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.success("🎉 No duplicates found")
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #10b981 0%, #065f46 100%); 
+                        color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+                <h3 style="margin: 0; color: white;">0</h3>
+                <p style="margin: 0; opacity: 0.9;">🎉 No Duplicates</p>
+            </div>
+            """, unsafe_allow_html=True)
     
-    # Display current batch results
-    st.subheader("📋 Current Batch Results")
+    # Display current batch results with modern styling
+    st.markdown("### 📋 Current Batch Results")
     
-    # Show the data in a nice table
-    st.dataframe(
-        deduplicated_current,
-        use_container_width=True,
-        hide_index=True
-    )
+    # Enhanced table display
+    if not deduplicated_current.empty:
+        st.markdown("""
+        <div style="background: white; padding: 1rem; border-radius: 8px; 
+                    border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);">
+        """, unsafe_allow_html=True)
+        
+        st.dataframe(
+            deduplicated_current,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Date": st.column_config.DateColumn("📅 Date"),
+                "PIN": st.column_config.TextColumn("🔢 PIN", width="medium"),
+                "Taxpayer_Name": st.column_config.TextColumn("👤 Taxpayer", width="large"),
+                "Year": st.column_config.NumberColumn("� Year"),
+                "Officer_Name": st.column_config.TextColumn("👥 Officer", width="medium"),
+                "Station": st.column_config.TextColumn("🏢 Station", width="medium")
+            }
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.warning("No data extracted from the uploaded files")
     
-    # Summary statistics for current batch
-    st.subheader("📈 Current Batch Summary")
-    col1, col2, col3, col4 = st.columns(4)
+    # Enhanced summary statistics
+    st.markdown("### 📈 Processing Statistics")
     
     total_files = len(results)
-    successful = len([r for r in results if any(r.get(field, '') for field in ['date', 'pin', 'taxpayerName', 'preAmount', 'finalAmount', 'year', 'officerName', 'station'])])
+    successful = len([r for r in results if any(r.get(field, '') for field in ['Date', 'PIN', 'Taxpayer_Name', 'Year', 'Officer_Name', 'Station'])])
     success_rate = (successful / total_files * 100) if total_files > 0 else 0
     
-    with col1:
-        st.metric("Files Processed", total_files)
-    with col2:
-        st.metric("Successful Extractions", successful)
-    with col3:
-        st.metric("Success Rate", f"{success_rate:.1f}%")
-    with col4:
-        st.metric("Records Added to DB", new_records)
+    col1, col2, col3, col4 = st.columns(4)
     
-    # Download options
-    st.subheader("📥 Download Options")
+    with col1:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{total_files}</h3>
+            <p style="margin: 0; opacity: 0.9;">📄 Files Processed</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #10b981 0%, #065f46 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{successful}</h3>
+            <p style="margin: 0; opacity: 0.9;">✅ Successful</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        color = "#10b981" if success_rate >= 80 else "#f59e0b" if success_rate >= 60 else "#ef4444"
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, {color} 0%, {color}dd 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{success_rate:.1f}%</h3>
+            <p style="margin: 0; opacity: 0.9;">🎯 Success Rate</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); 
+                    color: white; padding: 1rem; border-radius: 8px; text-align: center;">
+            <h3 style="margin: 0; color: white;">{new_records}</h3>
+            <p style="margin: 0; opacity: 0.9;">💾 DB Records Added</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Modern download section
+    st.markdown("### 📥 Export Options")
+    
     col1, col2 = st.columns(2)
     
     with col1:
+        st.markdown("""
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; 
+                    border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+            <h4 style="margin-top: 0; color: #1e3a8a;">📄 Current Session</h4>
+            <p style="color: #64748b; margin-bottom: 1rem;">Download results from this processing session only</p>
+        """, unsafe_allow_html=True)
+        
         # Current batch download
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -1081,7 +1054,7 @@ def display_results(results):
             summary_data = {
                 'Metric': [
                     'Files Processed',
-                    'Successful Extractions',
+                    'Successful Extractions', 
                     'Success Rate (%)',
                     'Processing Date',
                     'Records in Batch'
@@ -1108,16 +1081,48 @@ def display_results(results):
             key=f"download_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         )
         
+        st.markdown("</div>", unsafe_allow_html=True)
+        
     with col2:
+        st.markdown("""
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; 
+                    border: 1px solid #e2e8f0; margin-bottom: 1rem;">
+            <h4 style="margin-top: 0; color: #1e3a8a;">🗄️ Complete Database</h4>
+            <p style="color: #64748b; margin-bottom: 1rem;">Download all historical records from the database</p>
+        """, unsafe_allow_html=True)
+        
         # Full database download
         excel_data = export_database_to_excel()
         if excel_data:
             st.download_button(
-                label="📥 Download Full Database",
+                label="📥 Download Complete Database",
                 data=excel_data,
                 file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary",
+                use_container_width=True,
+                help="Download complete database with all historical records",
+                key=f"download_full_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
+        else:
+            st.warning("Database export temporarily unavailable")
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Beautiful footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); 
+                color: white; padding: 2rem; border-radius: 12px; text-align: center; margin-top: 2rem;">
+        <h3 style="color: white; margin-bottom: 1rem;">🏛️ Kenya Revenue Authority</h3>
+        <p style="opacity: 0.9; margin-bottom: 0;">
+            Professional Data Extraction System • Powered by Advanced AI Technology
+        </p>
+        <p style="opacity: 0.7; margin-top: 0.5rem; font-size: 0.9rem;">
+            © 2025 KRA Data Extraction System • All rights reserved
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
                 use_container_width=True,
                 help=f"Download complete database with all historical records ({total_records} total records)",
                 key=f"download_db_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
