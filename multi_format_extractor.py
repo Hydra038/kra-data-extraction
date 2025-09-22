@@ -533,20 +533,30 @@ def extract_kra_fields(text):
             fallback_patterns = [
                 r'(?:principal\s+tax|tax\s+due|final\s+tax)[:\s]*([0-9,]+\.?\d*)',
                 r'(?:amount\s+due|net\s+tax|payable)[:\s]*([0-9,]+\.?\d*)',
+                # More aggressive patterns for tax amounts
+                r'(?:tax\s+amount|amount\s+of\s+tax|tax\s+payable)[:\s]*([0-9,]+\.?\d*)',
+                r'(?:withholding\s+tax|paye\s+tax|income\s+tax)[:\s]*([0-9,]+\.?\d*)',
+                # Look for amounts near the word "tax" (broader search)
+                r'tax[^\d]*?([0-9,]+\.?\d*)',
+                # Look for any substantial amount (as last resort for documents with tax data)
+                r'\b([0-9]{1,2}(?:,\d{3})+\.\d{2})\b',  # Pattern like 14,769.50
             ]
             
             for pattern in fallback_patterns:
-                match = re.search(pattern, text, re.IGNORECASE)
-                if match:
+                matches = re.finditer(pattern, text, re.IGNORECASE)
+                for match in matches:
                     amount = match.group(1).strip()
                     clean_amount = amount.replace(',', '')
                     try:
                         amount_value = float(clean_amount)
-                        if amount_value >= 10:
+                        # More lenient threshold for fallback patterns
+                        if amount_value >= 100:  # Higher minimum for fallback to avoid false positives
                             data['preAmount'] = amount
                             break
                     except ValueError:
                         continue
+                if data['preAmount']:
+                    break
         
         # FIXED: Extract Year with proper patterns and business logic
         year_found = False
@@ -682,6 +692,10 @@ def process_document(file_path_or_uploaded, file_name):
         # Extract KRA fields
         kra_data = extract_kra_fields(text)
         result.update(kra_data)
+        
+        # Store extracted text for debugging (first file only)
+        if not hasattr(st.session_state, 'last_extracted_text'):
+            st.session_state.last_extracted_text = text
         
         log_debug(f"Document processed successfully")
         
@@ -1085,6 +1099,34 @@ def display_results(results):
     
     # Display current batch results
     st.subheader("📋 Current Batch Results")
+    
+    # DEBUG: Show extraction details for troubleshooting
+    with st.expander("🔍 Debug: Extraction Details", expanded=False):
+        for i, result in enumerate(results[:3]):  # Show first 3 for debugging
+            st.write(f"**File {i+1} Debug Info:**")
+            st.write(f"- PIN: `{result.get('pin', 'NOT FOUND')}`")
+            st.write(f"- Taxpayer Name: `{result.get('taxpayerName', 'NOT FOUND')}`")
+            st.write(f"- **preAmount: `{result.get('preAmount', 'NOT FOUND')}`**")
+            st.write(f"- Year: `{result.get('year', 'NOT FOUND')}`")
+            st.write(f"- Officer: `{result.get('officerName', 'NOT FOUND')}`")
+            
+            # NEW: Show raw extracted text to help debug Total Tax detection
+            if hasattr(st.session_state, 'last_extracted_text') and i == 0:
+                st.write("**Raw Extracted Text (first 500 chars):**")
+                text_preview = st.session_state.last_extracted_text[:500] if st.session_state.last_extracted_text else "No text found"
+                st.text(text_preview)
+                
+                # Check for Total Tax lines specifically
+                if st.session_state.last_extracted_text:
+                    lines = st.session_state.last_extracted_text.split('\n')
+                    total_tax_lines = [line.strip() for line in lines if 'total tax' in line.lower()]
+                    if total_tax_lines:
+                        st.write("**Total Tax lines found:**")
+                        for line in total_tax_lines:
+                            st.code(line)
+                    else:
+                        st.write("❌ **No 'Total Tax' lines found in document**")
+            st.write("---")
     
     # Show the data in a nice table
     st.dataframe(
