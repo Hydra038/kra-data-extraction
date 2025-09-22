@@ -20,7 +20,7 @@ def create_record_hash(record: Dict[str, Any]) -> str:
         str: MD5 hash of key identifying fields
     """
     # Use key fields that should be unique per document (core fields only)
-    key_fields = ['PIN', 'Date', 'Taxpayer_Name']
+    key_fields = ['pin', 'date', 'taxpayerName']
     
     # Create a string from key fields (handle missing values)
     key_string = ""
@@ -44,25 +44,27 @@ def calculate_record_score(record: Dict[str, Any]) -> float:
     score = 0.0
     max_score = 100.0
     
-    # Core fields and their weights (6 fields only)
+    # Core fields and their weights (8 fields)
     field_weights = {
-        'Date': 18,
-        'PIN': 22,
-        'Taxpayer_Name': 20,
-        'Year': 15,
-        'Officer_Name': 15,
-        'Station': 10
+        'date': 16,
+        'pin': 20,
+        'taxpayerName': 18,
+        'preAmount': 12,
+        'finalAmount': 8,
+        'year': 12,
+        'officerName': 8,
+        'station': 6
     }
     
     for field, weight in field_weights.items():
         value = record.get(field, '')
         if value and str(value).strip():
             # Additional scoring based on data quality
-            if field == 'PIN' and len(str(value)) == 11:  # Valid PIN format
+            if field == 'pin' and len(str(value)) == 11:  # Valid PIN format
                 score += weight * 1.2  # Bonus for valid format
-            elif field == 'Year' and str(value).isdigit() and 2020 <= int(value) <= 2030:
+            elif field == 'year' and str(value).isdigit() and 2020 <= int(value) <= 2030:
                 score += weight * 1.1  # Bonus for valid year
-            elif field in ['Date', 'Taxpayer_Name', 'Officer_Name', 'Station'] and len(str(value)) > 3:
+            elif field in ['date', 'taxpayerName', 'officerName', 'station'] and len(str(value)) > 3:
                 score += weight  # Standard score for meaningful content
             else:
                 score += weight * 0.8  # Reduced score for questionable data
@@ -114,7 +116,7 @@ def merge_duplicate_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     best_record = scored_records[0][1].copy()
     
     # Merge additional data from other records if better
-    merge_fields = ['Date', 'PIN', 'Taxpayer_Name', 'Year', 'Officer_Name', 'Station']
+    merge_fields = ['date', 'pin', 'taxpayerName', 'preAmount', 'finalAmount', 'year', 'officerName', 'station']
     
     for _, record in scored_records[1:]:
         for field in merge_fields:
@@ -235,26 +237,30 @@ if __name__ == "__main__":
     sample_data = [
         {
             'File_Name': 'test.pdf',
-            'Date': '29TH AUGUST, 2025',
-            'PIN': 'A001126762Z',
-            'Taxpayer_Name': 'Peter Kimutai Telengech',
-            'Year': '2024',
-            'Officer_Name': 'Franciscar Nyangweta',
-            'Station': 'ELDORET',
+            'date': '29TH AUGUST, 2025',
+            'pin': 'A001126762Z',
+            'taxpayerName': 'Peter Kimutai Telengech',
+            'preAmount': '14,769.50',
+            'finalAmount': '',
+            'year': '2024',
+            'officerName': 'Franciscar Nyangweta',
+            'station': 'ELDORET',
             'Processing_Status': 'Success',
-            'Fields_Found': 6,
+            'Fields_Found': 8,
             'Extraction_Method': 'multi_format_extractor'
         },
         {
             'File_Name': 'test.pdf',
-            'Date': '29TH AUGUST, 2025',
-            'PIN': 'A001126762Z',
-            'Taxpayer_Name': 'Peter Kimutai Telengech',
-            'Year': '2024',
-            'Officer_Name': 'Franciscar Nyangweta',
-            'Station': 'ELDORET',
+            'date': '29TH AUGUST, 2025',
+            'pin': 'A001126762Z',
+            'taxpayerName': 'Peter Kimutai Telengech',
+            'preAmount': '14,769.50',
+            'finalAmount': '',
+            'year': '2024',
+            'officerName': 'Franciscar Nyangweta',
+            'station': 'ELDORET',
             'Processing_Status': 'Success',
-            'Fields_Found': 6,
+            'Fields_Found': 8,
             'Extraction_Method': 'app_extractor'
         }
     ]

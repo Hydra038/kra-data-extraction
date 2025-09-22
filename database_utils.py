@@ -151,7 +151,7 @@ def save_to_database(new_data_df: pd.DataFrame, source_app: str = "unknown") -> 
                     datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                     len(new_data_df),
                     duplicates_removed,
-                    deduplicated_df['Date'].min() if not deduplicated_df.empty and 'Date' in deduplicated_df.columns else 'N/A',
+                    deduplicated_df['date'].min() if not deduplicated_df.empty and 'date' in deduplicated_df.columns else 'N/A',
                     deduplicated_df['date'].max() if not deduplicated_df.empty and 'date' in deduplicated_df.columns else 'N/A',
                     deduplicated_df['taxpayerName'].nunique() if not deduplicated_df.empty and 'taxpayerName' in deduplicated_df.columns else 0,
                     deduplicated_df['station'].nunique() if not deduplicated_df.empty and 'station' in deduplicated_df.columns else 0
