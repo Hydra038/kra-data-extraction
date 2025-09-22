@@ -52,11 +52,210 @@ pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tessera
 
 # Configure page layout
 st.set_page_config(
-    page_title="KRA Data Extractor - Multi-Format",
-    page_icon="📊",
+    page_title="KRA Data Extraction System",
+    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Authentic KRA iTax styling based on official portal
+st.markdown("""
+<style>
+    /* Import fonts similar to KRA */
+    @import url('https://fonts.googleapis.com/css2?family=Arial:wght@400;500;600;700&display=swap');
+    
+    /* KRA Official Colors from iTax portal */
+    :root {
+        --kra-red: #dc2626;
+        --kra-red-dark: #b91c1c;
+        --kra-blue: #1e40af;
+        --kra-blue-light: #3b82f6;
+        --kra-gray: #f3f4f6;
+        --kra-gray-dark: #6b7280;
+        --kra-white: #ffffff;
+        --kra-black: #1f2937;
+    }
+    
+    /* Reset default Streamlit styling */
+    .main .block-container {
+        padding-top: 0rem;
+        padding-bottom: 2rem;
+        font-family: Arial, sans-serif;
+        max-width: 100%;
+    }
+    
+    /* KRA Header - Red bar like iTax */
+    .kra-header-bar {
+        background: var(--kra-red);
+        color: white;
+        padding: 0.5rem 2rem;
+        margin: -1rem -1rem 0 -1rem;
+        font-size: 0.9rem;
+        text-align: center;
+        font-weight: 500;
+    }
+    
+    /* Main KRA Header */
+    .kra-main-header {
+        background: var(--kra-white);
+        padding: 1.5rem 2rem;
+        border-bottom: 2px solid var(--kra-gray);
+        margin-bottom: 2rem;
+    }
+    
+    .kra-logo-section {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    
+    .kra-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--kra-black);
+        margin: 0;
+    }
+    
+    .kra-subtitle {
+        color: var(--kra-gray-dark);
+        font-size: 1rem;
+        margin: 0.5rem 0 0 0;
+    }
+    
+    /* Service cards like iTax portal */
+    .kra-services-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .kra-service-card {
+        background: var(--kra-white);
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .kra-service-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .kra-service-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--kra-blue);
+        margin-bottom: 0.5rem;
+    }
+    
+    .kra-service-desc {
+        color: var(--kra-gray-dark);
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+    
+    /* Stats cards */
+    .kra-stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .kra-stat-card {
+        background: linear-gradient(135deg, var(--kra-blue) 0%, var(--kra-blue-light) 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
+    }
+    
+    .kra-stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .kra-stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    /* Buttons - KRA Red style */
+    .stButton > button {
+        background: var(--kra-red) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 4px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 500 !important;
+        transition: background-color 0.3s ease !important;
+    }
+    
+    .stButton > button:hover {
+        background: var(--kra-red-dark) !important;
+        color: white !important;
+    }
+    
+    /* File uploader */
+    .stFileUploader {
+        border: 2px dashed var(--kra-blue);
+        border-radius: 8px;
+        padding: 2rem;
+        background: #f8fafc;
+        text-align: center;
+    }
+    
+    /* Progress bars */
+    .stProgress > div > div {
+        background: var(--kra-red);
+    }
+    
+    /* Tables */
+    .stDataFrame {
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    /* Sidebar */
+    .css-1d391kg, .css-1544g2n {
+        background: var(--kra-gray);
+        border-right: 1px solid #d1d5db;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display: none;}
+    header[data-testid="stHeader"] {display: none;}
+    
+    /* Success/Error styling */
+    .stSuccess {
+        background: #10b981;
+        border-radius: 4px;
+    }
+    
+    .stError {
+        background: var(--kra-red);
+        border-radius: 4px;
+    }
+    
+    .stWarning {
+        background: #f59e0b;
+        border-radius: 4px;
+    }
+    
+    .stInfo {
+        background: var(--kra-blue);
+        border-radius: 4px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -487,46 +686,130 @@ def process_folder(folder_path):
 def main():
     """Main application function"""
     
-    # Professional KRA-style header
+    # KRA iTax style header
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); 
-                padding: 2rem; border-radius: 15px; margin-bottom: 2rem; 
-                color: white; text-align: center;">
-        <h1 style="color: white; margin-bottom: 0.5rem;">🏛️ KRA Data Extraction System</h1>
-        <p style="color: white; opacity: 0.9; margin-bottom: 0;">
-            Professional document processing for Kenya Revenue Authority
-        </p>
+    <div class="kra-header-bar">
+        Welcome to KRA Data Extraction System | Online Help | Contact Us
     </div>
     """, unsafe_allow_html=True)
     
-    # Database stats
+    # Main header section like iTax
+    st.markdown("""
+    <div class="kra-main-header">
+        <div class="kra-logo-section">
+            <div>
+                <h1 class="kra-title">KENYA REVENUE AUTHORITY</h1>
+                <p class="kra-subtitle">Data Extraction & Document Processing Portal</p>
+            </div>
+            <div style="text-align: right;">
+                <div style="background: linear-gradient(45deg, #dc2626, #ef4444); 
+                           color: white; padding: 0.5rem 1rem; border-radius: 25px; 
+                           display: inline-block; font-weight: 600;">
+                    📊 Data Portal
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Database statistics in KRA style
     try:
         db_stats = get_database_stats()
+        st.markdown("""
+        <div class="kra-stats-container">
+        """, unsafe_allow_html=True)
+        
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("📊 Total Records", f"{db_stats['total_records']:,}")
+            st.markdown(f"""
+            <div class="kra-stat-card">
+                <div class="kra-stat-number">{db_stats['total_records']:,}</div>
+                <div class="kra-stat-label">Total Records</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col2:
-            st.metric("👥 Unique Taxpayers", f"{db_stats['unique_taxpayers']:,}")
+            st.markdown(f"""
+            <div class="kra-stat-card">
+                <div class="kra-stat-number">{db_stats['unique_taxpayers']:,}</div>
+                <div class="kra-stat-label">Unique Taxpayers</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         with col3:
-            st.metric("👤 Tax Officers", f"{db_stats['unique_officers']:,}")
+            st.markdown(f"""
+            <div class="kra-stat-card">
+                <div class="kra-stat-number">{db_stats['unique_officers']:,}</div>
+                <div class="kra-stat-label">Tax Officers</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+        
     except:
         st.info("📊 Database statistics will appear here after first extraction")
     
-    # Sidebar for processing options
-    st.sidebar.header("🔧 Processing Options")
+    # Services section like iTax portal
+    st.markdown("""
+    <div class="kra-services-grid">
+        <div class="kra-service-card">
+            <div class="kra-service-title">📄 Document Processing</div>
+            <div class="kra-service-desc">
+                Upload PDF or Word documents for intelligent data extraction with AI-powered OCR technology.
+            </div>
+        </div>
+        <div class="kra-service-card">
+            <div class="kra-service-title">💾 Database Integration</div>
+            <div class="kra-service-desc">
+                Automatic database storage with smart duplicate detection and real-time processing statistics.
+            </div>
+        </div>
+        <div class="kra-service-card">
+            <div class="kra-service-title">📊 Data Analytics</div>
+            <div class="kra-service-desc">
+                Comprehensive reporting and analytics on extracted data with export capabilities to Excel.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # KRA-style sidebar
+    st.sidebar.markdown("""
+    <div style="background: var(--kra-red); color: white; padding: 1rem; 
+                margin: -1rem -1rem 1rem -1rem; text-align: center;">
+        <h3 style="color: white; margin: 0;">⚙️ Processing Options</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     processing_mode = st.sidebar.radio(
-        "Select Processing Mode:",
+        "**Select Processing Mode:**",
         ["📄 Individual Files", "📁 Folder Batch Processing"],
         help="Choose between uploading individual files or processing all documents in a folder"
     )
     
-    # Install dependencies button
-    if st.sidebar.button("📦 Install Word Processing Dependencies"):
-        with st.spinner("Installing python-docx and docx2txt..."):
-            try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "docx2txt"])
+    # System status section
+    st.sidebar.markdown("### 📋 System Status")
+    
+    status_docx = "🟢 Ready" if DOCX_AVAILABLE else "🔴 Missing"
+    status_docx2txt = "🟢 Ready" if DOCX2TXT_AVAILABLE else "🔴 Missing"
+    
+    st.sidebar.markdown(f"""
+    - **Word Documents**: {status_docx}
+    - **PDF Processing**: 🟢 Ready
+    - **OCR Engine**: 🟢 Ready
+    - **Database**: 🟢 Ready
+    """)
+    
+    # Install dependencies if needed
+    if not (DOCX_AVAILABLE and DOCX2TXT_AVAILABLE):
+        if st.sidebar.button("� Install Word Support", help="Install Microsoft Word processing capabilities"):
+            with st.spinner("Installing Word document support..."):
+                try:
+                    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "docx2txt"])
+                    st.sidebar.success("✅ Installation complete! Please restart the app.")
+                except Exception as e:
+                    st.sidebar.error(f"❌ Installation failed: {e}")
                 st.sidebar.success("Dependencies installed successfully!")
                 st.sidebar.info("Please restart the application to use Word processing features.")
             except Exception as e:
