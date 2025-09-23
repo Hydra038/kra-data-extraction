@@ -1030,52 +1030,9 @@ def main():
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
-    # KRA-style sidebar
-    st.sidebar.markdown("""
-    <div style="background: var(--kra-red); color: white; padding: 1rem; 
-                margin: -1rem -1rem 1rem -1rem; text-align: center;">
-        <h3 style="color: white; margin: 0;">⚙️ Processing Options</h3>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    processing_mode = st.sidebar.radio(
-        "**Select Processing Mode:**",
-        ["📄 Individual Files", "📁 Folder Batch Processing"],
-        help="Choose between uploading individual files or processing all documents in a folder"
-    )
-    
-    # System status section
-    st.sidebar.markdown("### 📋 System Status")
-    
-    status_docx = "🟢 Ready" if DOCX_AVAILABLE else "🔴 Missing"
-    status_docx2txt = "🟢 Ready" if DOCX2TXT_AVAILABLE else "🔴 Missing"
-    
-    st.sidebar.markdown(f"""
-    - **Word Documents**: {status_docx}
-    - **PDF Processing**: 🟢 Ready
-    - **OCR Engine**: 🟢 Ready
-    - **Database**: 🟢 Ready
-    """)
-    
-    # Install dependencies if needed
-    if not (DOCX_AVAILABLE and DOCX2TXT_AVAILABLE):
-        if st.sidebar.button("� Install Word Support", help="Install Microsoft Word processing capabilities"):
-            with st.spinner("Installing Word document support..."):
-                try:
-                    subprocess.check_call([sys.executable, "-m", "pip", "install", "python-docx", "docx2txt"])
-                    st.sidebar.success("✅ Installation complete! Please restart the app.")
-                except Exception as e:
-                    st.sidebar.error(f"❌ Installation failed: {e}")
-                st.sidebar.info("Please restart the application to use Word processing features.")
-    
-    # Check dependencies status
-    st.sidebar.markdown("### 📋 Dependencies Status")
-    st.sidebar.write(f"🔸 **python-docx**: {'✅ Available' if DOCX_AVAILABLE else '❌ Missing'}")
-    st.sidebar.write(f"🔸 **docx2txt**: {'✅ Available' if DOCX2TXT_AVAILABLE else '❌ Missing'}")
-    
-    if processing_mode == "📄 Individual Files":
-        st.header("📄 Individual File Processing")
+    # Sidebar and status UI removed for clean interface
+    processing_mode = "📄 Individual Files"
+    st.header("📄 Individual File Processing")
         
         # Database Information
         st.subheader("📊 Database Status")
