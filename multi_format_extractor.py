@@ -1096,57 +1096,57 @@ def main():
                     progress_bar.progress(progress)
                     status_placeholder.info(f"Processing {i+1}/{len(uploaded_files)}: {uploaded_file.name}")
                     
-                    # Reset file pointer
-                    uploaded_file.seek(0)
-                    result = process_document(uploaded_file, uploaded_file.name)
-                    results.append(result)
-                
-                progress_bar.progress(1.0)
-                status_placeholder.success("Processing completed!")
-                
-                # Simple debug output for the first file
-                if results and hasattr(st.session_state, 'last_extracted_text'):
-                    st.subheader("🔍 Debug: Extracted Text Preview")
-                    st.write("**First 500 characters of extracted text:**")
-                    preview_text = st.session_state.last_extracted_text[:500] if st.session_state.last_extracted_text else "No text extracted"
-                    st.text_area("Raw Extracted Text", preview_text, height=150, key="debug_text_preview")
-                    
-                    # Check for Total Tax
-                    if st.session_state.last_extracted_text:
-                        if 'total tax' in st.session_state.last_extracted_text.lower():
-                            st.success("✅ 'Total Tax' found in document")
-                        else:
-                            st.error("❌ 'Total Tax' NOT found in document")
-                            if 'tax' in st.session_state.last_extracted_text.lower():
-                                st.warning("⚠️ Found 'tax' but not 'Total Tax'")
-                
-                # Store results and mark as processed
-                st.session_state.processing_results = results
-                st.session_state.processed_files = True
-                
-                # Clear the file uploader by rerunning
-                st.rerun()
-        
-        # Display results if processing is complete
-        if st.session_state.processed_files and st.session_state.processing_results:
-            display_results(st.session_state.processing_results)
-            
-            # Add button to reset for new files
-            if st.button("🔄 Process New Files", type="secondary", key="reset_button_main"):
-                st.session_state.processed_files = False
-                st.session_state.processing_results = None
-                st.rerun()
-    
-    else:  # Folder processing
-        st.header("📁 Folder Batch Processing")
-        
-        # Database Information for folder processing too
-        st.subheader("📊 Database Status")
-        
-        # Get database stats
-        db_stats = get_database_stats()
-        
-        col1, col2, col3, col4 = st.columns(4)
+                # Database Information
+                st.subheader("📊 Database Status")
+                # Get database stats
+                db_stats = get_database_stats()
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Records", db_stats['total_records'])
+                with col2:
+                    st.metric("Unique Taxpayers", db_stats['unique_taxpayers'])
+                with col3:
+                    st.metric("Unique Stations", db_stats['unique_stations'])
+                with col4:
+                    if db_stats['total_records'] > 0:
+                        # Add full database download button
+                        excel_data = export_database_to_excel()
+                        if excel_data:
+                            st.download_button(
+                                label="📥 Download Full Database",
+                                data=excel_data,
+                                file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                type="primary",
+                                help="Download complete database with all historical records"
+                            )
+                if db_stats['total_records'] > 0:
+                    st.info(f"📅 Last updated: {db_stats['last_updated']} | 📊 Date range: {db_stats['date_range']}")
+                st.subheader("📄 Upload Documents")
+                st.info("💾 All extractions are automatically saved to the database with duplicate detection")
+                # Initialize session state for file management
+                if 'processed_files' not in st.session_state:
+                    st.session_state.processed_files = False
+                if 'processing_results' not in st.session_state:
+                    st.session_state.processing_results = None
+                # File uploader with key to enable clearing
+                uploaded_files = st.file_uploader(
+                    "Upload documents (PDF or Word)",
+                    type=['pdf', 'docx', 'doc'],
+                    accept_multiple_files=True,
+                    help="Upload one or more PDF or Word documents containing KRA tax notices",
+                    key="file_uploader_main"
+                )
+                if uploaded_files and not st.session_state.processed_files:
+                    st.success(f"📁 {len(uploaded_files)} file(s) uploaded")
+                    if st.button("� Process Uploaded Files", type="primary", key="process_button_main"):
+                        results = []
+                        progress_bar = st.progress(0)
+                        status_placeholder = st.empty()
+                        for i, uploaded_file in enumerate(uploaded_files):
+                            progress = (i + 1) / len(uploaded_files)
+                            progress_bar.progress(progress)
+                            status_placeholder.info(f"Processing {i+1}/{len(uploaded_files)}: {uploaded_file.name}")
         with col1:
             st.metric("Total Records", db_stats['total_records'])
         with col2:
