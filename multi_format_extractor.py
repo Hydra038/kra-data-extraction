@@ -23,7 +23,7 @@ import os
 # Import deduplication utilities
 from deduplication_utils import deduplicate_dataframe, compare_extraction_methods
 # Import database utilities
-from database_utils import save_to_database, get_database_stats, export_database_to_excel
+from database_utils import save_to_database, get_database_stats, export_database_to_excel, get_database_path
 import fitz  # PyMuPDF for efficient PDF handling
 import logging
 import traceback
@@ -67,10 +67,10 @@ except pytesseract.TesseractNotFoundError:
 
 # Configure page layout
 st.set_page_config(
-    page_title="KRA Data Extraction System",
+    page_title="KRA iTax - Data Extraction System",
     page_icon="🏛️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Authentic KRA iTax styling based on official portal
@@ -917,128 +917,284 @@ def process_folder(folder_path):
     return results
 
 def main():
-    """Main application function"""
-    
-    # KRA iTax style header
+    # Enhanced KRA iTax Professional UI Styling
     st.markdown("""
-    <div class="kra-header-bar">
-        Welcome to KRA Data Extraction System | Online Help | Contact Us
+    <style>
+    /* Import professional fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap');
+    
+    /* Global font and layout improvements */
+    .stApp {
+        font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif !important;
+    }
+    
+    /* Remove default margins and improve spacing */
+    .main .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 1200px !important;
+    }
+    
+    /* Navigation Card - Clean white design */
+    .nav-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #E5E7EB;
+        position: sticky;
+        top: 10px;
+        z-index: 100;
+    }
+    
+    .nav-title {
+        color: #374151 !important;
+        font-size: 1.3rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 1rem !important;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Radio button improvements */
+    .stRadio > div {
+        background: #FAFAFA;
+        border-radius: 10px;
+        padding: 1rem;
+        border: 1px solid #E5E7EB;
+    }
+    
+    .stRadio label {
+        font-weight: 500 !important;
+        color: #374151 !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stRadio label:hover {
+        background: #F3F4F6 !important;
+        color: #E31E24 !important;
+    }
+    
+    /* Enhanced Metric Cards */
+    div[data-testid="metric-container"] {
+        background: white !important;
+        border: 1px solid #E5E7EB !important;
+        border-radius: 10px !important;
+        padding: 1.2rem !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    div[data-testid="metric-container"]:hover {
+        box-shadow: 0 4px 12px rgba(227,30,36,0.15) !important;
+        border-color: #E31E24 !important;
+        transform: translateY(-2px) !important;
+    }
+    
+    div[data-testid="metric-container"] label {
+        font-size: 0.9rem !important;
+        font-weight: 500 !important;
+        color: #6B7280 !important;
+    }
+    
+    div[data-testid="metric-container"] div[data-testid="metric-value"] {
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+    }
+    
+    /* Section Cards */
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #F3F4F6;
+    }
+    
+    /* Enhanced Buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #E31E24 0%, #B91C1C 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 4px rgba(227,30,36,0.2) !important;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #B91C1C 0%, #991B1B 100%) !important;
+        box-shadow: 0 4px 12px rgba(227,30,36,0.4) !important;
+        transform: translateY(-1px) !important;
+    }
+    
+    /* Secondary Buttons */
+    .stButton > button[kind="secondary"] {
+        background: white !important;
+        color: #E31E24 !important;
+        border: 2px solid #E31E24 !important;
+    }
+    
+    .stButton > button[kind="secondary"]:hover {
+        background: #FEF2F2 !important;
+        border-color: #B91C1C !important;
+        color: #B91C1C !important;
+    }
+    
+    /* Download Buttons */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1.5rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 4px rgba(16,185,129,0.2) !important;
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(16,185,129,0.4) !important;
+    }
+    
+    /* Headers and Typography */
+    h1, h2, h3 {
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    
+    h2 {
+        color: #E31E24 !important;
+        font-size: 1.8rem !important;
+        margin-bottom: 1rem !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 2px solid #E31E24 !important;
+    }
+    
+    h3 {
+        color: #374151 !important;
+        font-size: 1.3rem !important;
+        margin-bottom: 0.8rem !important;
+    }
+    
+    /* File Uploader Enhancement */
+    .stFileUploader > div > div {
+        border: 2px dashed #E31E24 !important;
+        border-radius: 12px !important;
+        background: #FEFEFE !important;
+        padding: 2rem !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .stFileUploader > div > div:hover {
+        border-color: #B91C1C !important;
+        background: #FEF2F2 !important;
+    }
+    
+    /* Progress Bar */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #E31E24 0%, #B91C1C 100%) !important;
+        border-radius: 10px !important;
+    }
+    
+    /* Data Tables */
+    .stDataFrame {
+        border: 1px solid #E5E7EB !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    }
+    
+    /* Alert Messages */
+    .stSuccess {
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 500 !important;
+    }
+    
+    .stInfo {
+        background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%) !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 500 !important;
+    }
+    
+    .stWarning {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Hide Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Sidebar completely hidden */
+    .css-1d391kg {display: none !important;}
+    .css-1x8cf1d {display: none !important;}
+    
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Navigation Section - Fixed at top
+    st.markdown("""
+    <div class="nav-container">
+        <div class="nav-title">📋 Select Processing Mode</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Main header section like iTax
-    st.markdown("""
-    <div class="kra-main-header">
-        <div class="kra-logo-section">
-            <div>
-                <h1 class="kra-title">KENYA REVENUE AUTHORITY</h1>
-                <p class="kra-subtitle">Data Extraction & Document Processing Portal</p>
-            </div>
-            <div style="text-align: right;">
-                <div style="background: linear-gradient(45deg, #dc2626, #ef4444); 
-                           color: white; padding: 0.5rem 1rem; border-radius: 25px; 
-                           display: inline-block; font-weight: 600;">
-                    📊 Data Portal
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    processing_mode = st.radio(
+        "",  # Empty label since we have custom title above
+        ["📄 Upload Individual Files", "📁 Process Folder Batch"],
+        index=0,
+        help="Choose between uploading individual files or processing all documents in a folder",
+        horizontal=True
+    )
     
-    # --- Data Portal Button Logic ---
-    if 'show_data_portal' not in st.session_state:
-        st.session_state.show_data_portal = False
-
-    # Render Data Portal button (styled as before, but now functional)
-    data_portal_col = st.columns([8, 1])[1]
-    with data_portal_col:
-        if st.button("Data Portal", key="data_portal_btn", help="View extracted raw texts", use_container_width=True):
-            st.session_state.show_data_portal = True
-
-    # Add a Back to Dashboard button in Data Portal view
-    if st.session_state.show_data_portal:
-        st.subheader("📝 Extracted Raw Texts (Data Portal)")
-        if 'raw_texts' in st.session_state and st.session_state.raw_texts:
-            for fname, raw_text in st.session_state.raw_texts.items():
-                with st.expander(f"Raw Text: {fname}", expanded=False):
-                    st.text_area(f"Extracted Text for {fname}", raw_text, height=200, key=f"rawtext_{fname}")
-                    st.download_button(
-                        label=f"Download Raw Text ({fname})",
-                        data=raw_text,
-                        file_name=f"{fname}_extracted.txt",
-                        mime="text/plain",
-                        key=f"download_{fname}"
-                    )
-        else:
-            st.info("No extracted raw texts available yet. Process a document first.")
-        if st.button("⬅️ Back to Dashboard", key="back_to_dashboard_btn", use_container_width=True):
-            st.session_state.show_data_portal = False
-        return
-
-    # --- Dashboard (default view) ---
-    try:
-        db_stats = get_database_stats()
+    # Main Content Area
+    if processing_mode == "📄 Upload Individual Files":
+        # File Upload Section
         st.markdown("""
-        <div class="kra-stats-container">
+        <div class="section-card">
         """, unsafe_allow_html=True)
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['total_records']:,}</div>
-                <div class="kra-stat-label">Total Records</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['unique_taxpayers']:,}</div>
-                <div class="kra-stat-label">Unique Taxpayers</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col3:
-            st.markdown(f"""
-            <div class="kra-stat-card">
-                <div class="kra-stat-number">{db_stats['unique_officers']:,}</div>
-                <div class="kra-stat-label">Tax Officers</div>
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    except Exception:
-        st.info("📊 Database statistics will appear here after first extraction")
-    
-    # Services section like iTax portal
-    st.markdown("""
-    <div class="kra-services-grid">
-        <div class="kra-service-card">
-            <div class="kra-service-title">📄 Document Processing</div>
-            <div class="kra-service-desc">
-                Upload PDF or Word documents for intelligent data extraction with AI-powered OCR technology.
-            </div>
-        </div>
-        <div class="kra-service-card">
-            <div class="kra-service-title">💾 Database Integration</div>
-            <div class="kra-service-desc">
-                Automatic database storage with smart duplicate detection and real-time processing statistics.
-            </div>
-        </div>
-        <div class="kra-service-card">
-            <div class="kra-service-title">📊 Data Analytics</div>
-            <div class="kra-service-desc">
-                Comprehensive reporting and analytics on extracted data with export capabilities to Excel.
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    # Sidebar and status UI removed for clean interface
-    processing_mode = "📄 Individual Files"
-    st.header("📄 Individual File Processing")
         
-        # Database Information
+        st.header("📄 Individual File Processing")
+        
+        # Database Information with refresh capability
         st.subheader("📊 Database Status")
         
-        # Get database stats
+        # Add refresh button
+        col_refresh1, col_refresh2 = st.columns([3, 1])
+        with col_refresh2:
+            if st.button("🔄 Refresh", help="Refresh database statistics", key="refresh_db_stats"):
+                st.rerun()
+        
+        # Get database stats (with cache invalidation if refresh triggered)
         db_stats = get_database_stats()
+        
+        # Check if database file exists
+        db_path = get_database_path()
+        db_exists = os.path.exists(db_path)
+        
+        if db_exists:
+            st.success(f"📁 Database file: `{os.path.basename(db_path)}` ({'exists' if db_exists else 'not found'})")
+        else:
+            st.info("📁 Database file will be created after first extraction")
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -1065,7 +1221,6 @@ def main():
             st.info(f"📅 Last updated: {db_stats['last_updated']} | 📊 Date range: {db_stats['date_range']}")
         
         st.subheader("📄 Upload Documents")
-        st.info("💾 All extractions are automatically saved to the database with duplicate detection")
         
         # Initialize session state for file management
         if 'processed_files' not in st.session_state:
@@ -1096,57 +1251,53 @@ def main():
                     progress_bar.progress(progress)
                     status_placeholder.info(f"Processing {i+1}/{len(uploaded_files)}: {uploaded_file.name}")
                     
-                # Database Information
-                st.subheader("📊 Database Status")
-                # Get database stats
-                db_stats = get_database_stats()
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Records", db_stats['total_records'])
-                with col2:
-                    st.metric("Unique Taxpayers", db_stats['unique_taxpayers'])
-                with col3:
-                    st.metric("Unique Stations", db_stats['unique_stations'])
-                with col4:
-                    if db_stats['total_records'] > 0:
-                        # Add full database download button
-                        excel_data = export_database_to_excel()
-                        if excel_data:
-                            st.download_button(
-                                label="📥 Download Full Database",
-                                data=excel_data,
-                                file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                type="primary",
-                                help="Download complete database with all historical records"
-                            )
-                if db_stats['total_records'] > 0:
-                    st.info(f"📅 Last updated: {db_stats['last_updated']} | 📊 Date range: {db_stats['date_range']}")
-                st.subheader("📄 Upload Documents")
-                st.info("💾 All extractions are automatically saved to the database with duplicate detection")
-                # Initialize session state for file management
-                if 'processed_files' not in st.session_state:
-                    st.session_state.processed_files = False
-                if 'processing_results' not in st.session_state:
-                    st.session_state.processing_results = None
-                # File uploader with key to enable clearing
-                uploaded_files = st.file_uploader(
-                    "Upload documents (PDF or Word)",
-                    type=['pdf', 'docx', 'doc'],
-                    accept_multiple_files=True,
-                    help="Upload one or more PDF or Word documents containing KRA tax notices",
-                    key="file_uploader_main"
-                )
-                if uploaded_files and not st.session_state.processed_files:
-                    st.success(f"📁 {len(uploaded_files)} file(s) uploaded")
-                    if st.button("� Process Uploaded Files", type="primary", key="process_button_main"):
-                        results = []
-                        progress_bar = st.progress(0)
-                        status_placeholder = st.empty()
-                        for i, uploaded_file in enumerate(uploaded_files):
-                            progress = (i + 1) / len(uploaded_files)
-                            progress_bar.progress(progress)
-                            status_placeholder.info(f"Processing {i+1}/{len(uploaded_files)}: {uploaded_file.name}")
+                    # Process the uploaded file
+                    result = process_document(uploaded_file, uploaded_file.name)
+                    results.append(result)
+                
+                # Clear progress indicators
+                progress_bar.empty()
+                status_placeholder.empty()
+                
+                # Store results in session state
+                st.session_state.processing_results = results
+                st.session_state.processed_files = True
+                
+                # Force database stats refresh for updated display
+                if 'db_stats_refresh' not in st.session_state:
+                    st.session_state.db_stats_refresh = 0
+                st.session_state.db_stats_refresh += 1
+                
+                st.success(f"✅ Successfully processed {len(uploaded_files)} file(s)!")
+        
+        # Display results if files have been processed
+        if st.session_state.processed_files and st.session_state.processing_results:
+            display_results(st.session_state.processing_results)
+            
+            # Add option to clear results and process new files
+            if st.button("🔄 Process New Files", type="secondary", key="clear_results_button"):
+                st.session_state.processed_files = False
+                st.session_state.processing_results = None
+                st.rerun()
+        
+        # Close section card
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    else:  # Folder processing
+        # Folder Processing Section
+        st.markdown("""
+        <div class="section-card">
+        """, unsafe_allow_html=True)
+        
+        st.header("📁 Folder Batch Processing")
+        
+        # Database Information for folder processing too
+        st.subheader("📊 Database Status")
+        
+        # Get database stats
+        db_stats = get_database_stats()
+        
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Records", db_stats['total_records'])
         with col2:
@@ -1170,8 +1321,6 @@ def main():
         
         if db_stats['total_records'] > 0:
             st.info(f"📅 Last updated: {db_stats['last_updated']} | 📊 Date range: {db_stats['date_range']}")
-        
-        st.info("💾 All extractions are automatically saved to the database with duplicate detection")
         
         # Initialize session state for folder processing
         if 'folder_processed' not in st.session_state:
@@ -1221,6 +1370,9 @@ def main():
                 st.session_state.folder_results = None
                 st.session_state.folder_path_processed = ""
                 st.rerun()
+        
+        # Close section card
+        st.markdown("</div>", unsafe_allow_html=True)
 
 def display_results(results):
     """Display processing results and save to database"""
@@ -1236,16 +1388,10 @@ def display_results(results):
     # Apply deduplication to current batch
     deduplicated_current = deduplicate_dataframe(current_df)
     
-    # --- DEBUG: Show DataFrame info before saving ---
-    st.write("### [DEBUG] DataFrame to be saved:")
-    st.write(f"Rows: {len(deduplicated_current)} | Columns: {list(deduplicated_current.columns)}")
-    st.dataframe(deduplicated_current.head(5))
-    
     if len(deduplicated_current) < len(current_df):
         st.info(f"🔍 Removed {len(current_df) - len(deduplicated_current)} duplicate(s) from current batch")
     
     # Save to database automatically
-    st.info("💾 Saving results to database...")
     total_records, new_records, duplicates_removed = save_to_database(deduplicated_current, "multi_format_extractor")
     
     # Display save results
@@ -1319,54 +1465,31 @@ def display_results(results):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             deduplicated_current.to_excel(writer, sheet_name='Current_Batch_Results', index=False)
-            
-            # Add batch summary
-            summary_data = {
-                'Metric': [
-                    'Files Processed',
-                    'Successful Extractions',
-                    'Success Rate (%)',
-                    'Processing Date',
-                    'Records in Batch'
-                ],
-                'Value': [
-                    total_files,
-                    successful,
-                    f"{success_rate:.1f}%",
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    len(deduplicated_current)
-                ]
-            }
-            summary_df = pd.DataFrame(summary_data)
-            summary_df.to_excel(writer, sheet_name='Batch_Summary', index=False)
         
         st.download_button(
             label="📥 Download Current Batch",
             data=output.getvalue(),
-            file_name=f"KRA_Current_Batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            file_name=f"KRA_Batch_Results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="secondary",
-            use_container_width=True,
-            help=f"Download results from this processing session ({len(deduplicated_current)} records)",
-            key=f"download_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            help="Download results from this processing session"
         )
-        
+    
     with col2:
         # Full database download
         excel_data = export_database_to_excel()
         if excel_data:
             st.download_button(
-                label="📥 Download Full Database",
+                label="📥 Download Complete Database",
                 data=excel_data,
                 file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True,
-                help=f"Download complete database with all historical records ({total_records} total records)",
-                key=f"download_db_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                help="Download entire database with all historical records"
             )
-        else:
-            st.error("Failed to export database")
     
+    # Force refresh of database stats in session state after save
+    if 'db_stats_refresh' not in st.session_state:
+        st.session_state.db_stats_refresh = 0
+    st.session_state.db_stats_refresh += 1
+
 if __name__ == "__main__":
     main()
