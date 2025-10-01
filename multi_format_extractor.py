@@ -23,7 +23,7 @@ import os
 # Import deduplication utilities
 from deduplication_utils import deduplicate_dataframe, compare_extraction_methods
 # Import database utilities
-from database_utils import save_to_database, get_database_stats, export_database_to_excel, get_database_path
+from database_utils import save_to_database, get_database_stats, export_database_to_excel, get_database_path, secure_export_database_to_excel
 import fitz  # PyMuPDF for efficient PDF handling
 import logging
 import traceback
@@ -1205,8 +1205,8 @@ def main():
             st.metric("Unique Stations", db_stats['unique_stations'])
         with col4:
             if db_stats['total_records'] > 0:
-                # Add full database download button
-                excel_data = export_database_to_excel()
+                # Add secure database download button
+                excel_data = secure_export_database_to_excel()
                 if excel_data:
                     st.download_button(
                         label="📥 Download Full Database",
@@ -1214,7 +1214,7 @@ def main():
                         file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         type="primary",
-                        help="Download complete database with all historical records"
+                        help="🔒 Secure download - Authorization required"
                     )
         
         if db_stats['total_records'] > 0:
@@ -1306,8 +1306,8 @@ def main():
             st.metric("Unique Stations", db_stats['unique_stations'])
         with col4:
             if db_stats['total_records'] > 0:
-                # Add full database download button
-                excel_data = export_database_to_excel()
+                # Add secure database download button
+                excel_data = secure_export_database_to_excel()
                 if excel_data:
                     st.download_button(
                         label="📥 Download Full Database",
@@ -1315,7 +1315,7 @@ def main():
                         file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         type="primary",
-                        help="Download complete database with all historical records",
+                        help="🔒 Secure download - Authorization required",
                         key="folder_download_db"
                     )
         
@@ -1475,15 +1475,15 @@ def display_results(results):
         )
     
     with col2:
-        # Full database download
-        excel_data = export_database_to_excel()
+        # Secure database download
+        excel_data = secure_export_database_to_excel()
         if excel_data:
             st.download_button(
                 label="📥 Download Complete Database",
                 data=excel_data,
                 file_name=f"KRA_Complete_Database_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Download entire database with all historical records"
+                help="🔒 Secure download - Authorization required"
             )
     
     # Force refresh of database stats in session state after save

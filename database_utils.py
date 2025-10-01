@@ -10,6 +10,8 @@ from datetime import datetime
 import logging
 from typing import Tuple, Optional
 from deduplication_utils import deduplicate_dataframe
+import hashlib
+import streamlit as st
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,6 +19,64 @@ logger = logging.getLogger(__name__)
 # Database configuration
 DATABASE_FILE = "kra_master_database.xlsx"
 BACKUP_FILE = "kra_master_database_backup.xlsx"
+
+# Security configuration - Store hashed password (replace with your secure password hash)
+# Default password is "KraData@2025" - Change this in production!
+DOWNLOAD_PASSWORD_HASH = "034862fb6d67d61913e06b9e64286a16b17aff378f842e097b86ab42f1c2815f"  # "KraData@2025"
+
+def check_download_authorization() -> bool:
+    """
+    Simple password-based authorization for database downloads
+    Returns True if authorized, False otherwise
+    """
+    if 'authorized_download' not in st.session_state:
+        st.session_state.authorized_download = False
+        st.session_state.auth_timestamp = None
+    
+    # Check if session has expired (15 minute timeout)
+    if (st.session_state.authorized_download and 
+        st.session_state.auth_timestamp):
+        import datetime as dt
+        if dt.datetime.now() - st.session_state.auth_timestamp > dt.timedelta(minutes=15):
+            st.session_state.authorized_download = False
+            st.info("🕐 Session expired. Please re-authenticate.")
+    
+    if not st.session_state.authorized_download:
+        password = st.text_input("Password:", type="password", key="auth_password")
+        
+        if st.button("🔓 Authorize", type="primary"):
+            if password:
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                if password_hash == DOWNLOAD_PASSWORD_HASH:
+                    import datetime as dt
+                    st.session_state.authorized_download = True
+                    st.session_state.auth_timestamp = dt.datetime.now()
+                    
+                    # Log successful authorization
+                    logger.info("Database download authorized successfully")
+                    
+                    st.success("✅ Authorization successful!")
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid password!")
+                    logger.warning("Failed database download authorization attempt")
+            else:
+                st.error("Please enter a password")
+        
+        return False
+    
+    # User is authorized - show minimal status
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.success("✅ Authorized")
+    with col2:
+        if st.button("🚪 Logout"):
+            st.session_state.authorized_download = False
+            st.session_state.auth_timestamp = None
+            logger.info("User logged out from database download authorization")
+            st.rerun()
+    
+    return True
 
 def get_database_path() -> str:
     """Get the full path to the database file"""
@@ -299,6 +359,23 @@ def export_database_to_excel() -> Optional[bytes]:
     except Exception as e:
         logger.error(f"Error exporting database: {str(e)}")
         return None
+
+def secure_export_database_to_excel() -> Optional[bytes]:
+    """
+    Secure database export with authorization check
+    
+    Returns:
+        bytes: Excel file content as bytes if authorized, or None if not authorized/export fails
+    """
+    # Check authorization first
+    if not check_download_authorization():
+        return None
+    
+    # Log the download action
+    logger.info("Authorized database download initiated")
+    
+    # Proceed with regular export
+    return export_database_to_excel()
 
 def clear_database() -> bool:
     """
